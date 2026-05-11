@@ -36,9 +36,9 @@ class ReporteGerenciaVentas(models.Model):
                     pol.price_subtotal_incl AS price_total,
                     pol.price_subtotal_incl_ref AS price_total_usd,
                     (pol.qty * CAST(COALESCE(pp.standard_price->>po.company_id::text, pp.standard_price->>'0', '0') AS NUMERIC)) AS cost_total,
-                    (pol.qty * CAST(COALESCE(pp.standard_price_usd->>po.company_id::text, pp.standard_price_usd->>'0', '0') AS NUMERIC)) AS cost_total_usd,
+                    (pol.qty * pp.standard_price_usd) AS cost_total_usd,
                     (pol.price_subtotal_incl - (pol.qty * CAST(COALESCE(pp.standard_price->>po.company_id::text, pp.standard_price->>'0', '0') AS NUMERIC))) AS margin,
-                    (pol.price_subtotal_incl_ref - (pol.qty * CAST(COALESCE(pp.standard_price_usd->>po.company_id::text, pp.standard_price_usd->>'0', '0') AS NUMERIC))) AS margin_usd,
+                    (pol.price_subtotal_incl_ref - (pol.qty * pp.standard_price_usd)) AS margin_usd,
                     'pos' AS source,
                     po.id AS order_id
                 FROM pos_order_line pol
@@ -61,9 +61,9 @@ class ReporteGerenciaVentas(models.Model):
                     sol.price_total AS price_total,
                     (sol.price_total / NULLIF(so.x_tasa, 0)) AS price_total_usd,
                     (sol.product_uom_qty * CAST(COALESCE(pp.standard_price->>so.company_id::text, pp.standard_price->>'0', '0') AS NUMERIC)) AS cost_total,
-                    (sol.product_uom_qty * CAST(COALESCE(pp.standard_price_usd->>so.company_id::text, pp.standard_price_usd->>'0', '0') AS NUMERIC)) AS cost_total_usd,
+                    (sol.product_uom_qty * pp.standard_price_usd) AS cost_total_usd,
                     (sol.price_total - (sol.product_uom_qty * CAST(COALESCE(pp.standard_price->>so.company_id::text, pp.standard_price->>'0', '0') AS NUMERIC))) AS margin,
-                    ((sol.price_total / NULLIF(so.x_tasa, 0)) - (sol.product_uom_qty * CAST(COALESCE(pp.standard_price_usd->>so.company_id::text, pp.standard_price_usd->>'0', '0') AS NUMERIC))) AS margin_usd,
+                    ((sol.price_total / NULLIF(so.x_tasa, 0)) - (sol.product_uom_qty * pp.standard_price_usd)) AS margin_usd,
                     'sale' AS source,
                     so.id AS order_id
                 FROM sale_order_line sol
