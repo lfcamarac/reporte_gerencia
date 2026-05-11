@@ -37,7 +37,7 @@
             <pivot string="Análisis de Compras">
                 <field name="partner_id" type="row"/>
                 <field name="price_total_usd" type="measure"/>
-            </graph>
+            </pivot>
         </field>
     </record>
 
