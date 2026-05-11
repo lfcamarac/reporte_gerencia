@@ -52,7 +52,19 @@
               name="Gerencia" 
               sequence="1" 
               web_icon="base,static/description/icon.png"
-              groups="base.group_user"/>
-    <menuitem id="menu_reporte_gerencia_ventas" name="Ventas Consolidadas" parent="menu_reporte_gerencia_root" action="action_reporte_gerencia_ventas" sequence="10"/>
-    <menuitem id="menu_reporte_gerencia_compras" name="Compras / Proveedores" parent="menu_reporte_gerencia_root" action="action_reporte_gerencia_compras" sequence="20"/>
+              groups="group_gerencia_manager"/>
+
+    <menuitem id="menu_reporte_gerencia_ventas" 
+              name="Ventas Consolidadas" 
+              parent="menu_reporte_gerencia_root" 
+              action="action_reporte_gerencia_ventas" 
+              sequence="10"
+              groups="group_gerencia_manager"/>
+
+    <menuitem id="menu_reporte_gerencia_compras" 
+              name="Compras / Proveedores" 
+              parent="menu_reporte_gerencia_root" 
+              action="action_reporte_gerencia_compras" 
+              sequence="20"
+              groups="group_gerencia_manager"/>
 </odoo>

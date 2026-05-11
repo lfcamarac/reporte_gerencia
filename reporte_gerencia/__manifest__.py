@@ -30,6 +30,7 @@
         'base_contable',
     ],
     'data': [
+        'security/security.xml',
         'security/ir.model.access.csv',
         'views/reporte_gerencia_views.xml',
     ],
