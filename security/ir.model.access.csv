@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_reporte_gerencia_ventas,reporte.gerencia.ventas,model_reporte_gerencia_ventas,base.group_user,1,0,0,0
+access_reporte_gerencia_compras,reporte.gerencia.compras,model_reporte_gerencia_compras,base.group_user,1,0,0,0
