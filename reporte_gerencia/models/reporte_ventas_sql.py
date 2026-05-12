@@ -33,11 +33,7 @@ class ReporteGerenciaVentas(models.Model):
                     pol.product_id AS product_id,
                     pt.categ_id AS categ_id,
                     CAST(SPLIT_PART(pc.parent_path, '/', 1) AS INTEGER) AS main_categ_id,
-                    (SELECT name FROM product_category WHERE id = CAST(
-                        COALESCE(
-                            NULLIF(SPLIT_PART(pc.parent_path, '/', 2), ''), 
-                            SPLIT_PART(pc.parent_path, '/', 1)
-                        ) AS INTEGER)) AS main_categ_name,
+                    (SELECT name FROM product_category WHERE id = CAST(SPLIT_PART(pc.parent_path, '/', 1) AS INTEGER)) AS main_categ_name,
                     pol.qty AS quantity,
                     pol.price_subtotal_incl AS price_total,
                     pol.price_subtotal_incl_ref AS price_total_usd,
@@ -63,11 +59,7 @@ class ReporteGerenciaVentas(models.Model):
                     sol.product_id AS product_id,
                     pt.categ_id AS categ_id,
                     CAST(SPLIT_PART(pc.parent_path, '/', 1) AS INTEGER) AS main_categ_id,
-                    (SELECT name FROM product_category WHERE id = CAST(
-                        COALESCE(
-                            NULLIF(SPLIT_PART(pc.parent_path, '/', 2), ''), 
-                            SPLIT_PART(pc.parent_path, '/', 1)
-                        ) AS INTEGER)) AS main_categ_name,
+                    (SELECT name FROM product_category WHERE id = CAST(SPLIT_PART(pc.parent_path, '/', 1) AS INTEGER)) AS main_categ_name,
                     sol.product_uom_qty AS quantity,
                     sol.price_total AS price_total,
                     (sol.price_total / NULLIF(so.x_tasa, 0)) AS price_total_usd,
