@@ -5,7 +5,7 @@
         <field name="model">reporte.gerencia.ventas</field>
         <field name="arch" type="xml">
             <pivot string="Análisis de Ventas Consolidadas">
-                <field name="main_categ_id" type="row"/>
+                <field name="main_categ_name" type="row"/>
                 <field name="date" interval="month" type="col"/>
                 <field name="price_total_usd" type="measure"/>
                 <field name="margin_usd" type="measure"/>
@@ -18,7 +18,7 @@
         <field name="model">reporte.gerencia.ventas</field>
         <field name="arch" type="xml">
             <graph string="Ventas por Categoría Principal" type="bar" sample="1">
-                <field name="main_categ_id"/>
+                <field name="main_categ_name"/>
                 <field name="price_total_usd" type="measure"/>
             </graph>
         </field>
@@ -30,9 +30,9 @@
         <field name="arch" type="xml">
             <search>
                 <field name="product_id"/>
-                <field name="main_categ_id"/>
+                <field name="main_categ_name"/>
                 <group expand="1" string="Agrupar Por">
-                    <filter string="Categoría Principal" name="group_main_categ" context="{'group_by': 'main_categ_id'}"/>
+                    <filter string="Categoría Principal" name="group_main_categ" context="{'group_by': 'main_categ_name'}"/>
                     <filter string="Producto" name="group_product" context="{'group_by': 'product_id'}"/>
                     <filter string="Fecha" name="group_date" context="{'group_by': 'date:month'}"/>
                 </group>
@@ -75,10 +75,10 @@
         <field name="arch" type="xml">
             <search>
                 <field name="partner_id"/>
-                <field name="main_categ_id"/>
+                <field name="main_categ_name"/>
                 <group expand="1" string="Agrupar Por">
                     <filter string="Proveedor" name="group_partner" context="{'group_by': 'partner_id'}"/>
-                    <filter string="Categoría Principal" name="group_main_categ" context="{'group_by': 'main_categ_id'}"/>
+                    <filter string="Categoría Principal" name="group_main_categ" context="{'group_by': 'main_categ_name'}"/>
                     <filter string="Fecha" name="group_date" context="{'group_by': 'date:month'}"/>
                 </group>
             </search>

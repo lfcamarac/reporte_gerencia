@@ -11,7 +11,8 @@ class ReporteGerenciaCompras(models.Model):
     product_id = fields.Many2one('product.product', 'Producto', readonly=True)
     partner_id = fields.Many2one('res.partner', 'Proveedor', readonly=True)
     categ_id = fields.Many2one('product.category', 'Categoría', readonly=True)
-    main_categ_id = fields.Many2one('product.category', 'Categoría Principal', readonly=True)
+    main_categ_id = fields.Many2one('product.category', 'ID Categoría Principal', readonly=True)
+    main_categ_name = fields.Char('Categoría Principal', readonly=True)
     quantity = fields.Float('Unidades', readonly=True)
     price_total = fields.Float('Monto Total (Bs)', readonly=True)
     price_total_usd = fields.Float('Monto Total ($)', readonly=True)
@@ -27,6 +28,11 @@ class ReporteGerenciaCompras(models.Model):
                     po.partner_id AS partner_id,
                     pt.categ_id AS categ_id,
                     CAST(SPLIT_PART(pc.parent_path, '/', 1) AS INTEGER) AS main_categ_id,
+                    (SELECT name FROM product_category WHERE id = CAST(
+                        COALESCE(
+                            NULLIF(SPLIT_PART(pc.parent_path, '/', 2), ''), 
+                            SPLIT_PART(pc.parent_path, '/', 1)
+                        ) AS INTEGER)) AS main_categ_name,
                     pol.product_qty AS quantity,
                     pol.price_total AS price_total,
                     (pol.price_total / NULLIF(po.x_tasa, 0)) AS price_total_usd
