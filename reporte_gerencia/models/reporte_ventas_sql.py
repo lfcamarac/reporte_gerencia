@@ -31,7 +31,7 @@ class ReporteGerenciaVentas(models.Model):
                     pol.create_date AS date,
                     pol.product_id AS product_id,
                     pt.categ_id AS categ_id,
-                    COALESCE(pc.parent_id, pt.categ_id) AS main_categ_id,
+                    CAST(SPLIT_PART(pc.parent_path, '/', 1) AS INTEGER) AS main_categ_id,
                     pol.qty AS quantity,
                     pol.price_subtotal_incl AS price_total,
                     pol.price_subtotal_incl_ref AS price_total_usd,
@@ -45,7 +45,7 @@ class ReporteGerenciaVentas(models.Model):
                 JOIN pos_order po ON po.id = pol.order_id
                 JOIN product_product pp ON pp.id = pol.product_id
                 JOIN product_template pt ON pt.id = pp.product_tmpl_id
-                LEFT JOIN product_category pc ON pc.id = pt.categ_id
+                JOIN product_category pc ON pc.id = pt.categ_id
                 WHERE po.state IN ('paid', 'done', 'invoiced')
 
                 UNION ALL
@@ -56,7 +56,7 @@ class ReporteGerenciaVentas(models.Model):
                     sol.create_date AS date,
                     sol.product_id AS product_id,
                     pt.categ_id AS categ_id,
-                    COALESCE(pc.parent_id, pt.categ_id) AS main_categ_id,
+                    CAST(SPLIT_PART(pc.parent_path, '/', 1) AS INTEGER) AS main_categ_id,
                     sol.product_uom_qty AS quantity,
                     sol.price_total AS price_total,
                     (sol.price_total / NULLIF(so.x_tasa, 0)) AS price_total_usd,
@@ -70,7 +70,7 @@ class ReporteGerenciaVentas(models.Model):
                 JOIN sale_order so ON so.id = sol.order_id
                 JOIN product_product pp ON pp.id = sol.product_id
                 JOIN product_template pt ON pt.id = pp.product_tmpl_id
-                LEFT JOIN product_category pc ON pc.id = pt.categ_id
+                JOIN product_category pc ON pc.id = pt.categ_id
                 WHERE so.state IN ('sale', 'done') AND sol.product_uom_qty > 0
             )
         """ % self._table)
