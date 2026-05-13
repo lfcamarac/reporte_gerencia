@@ -100,9 +100,9 @@
             <pivot string="Análisis CxC y CxP">
                 <field name="partner_id" type="row"/>
                 <field name="account_type" type="col"/>
-                <field name="invoiced_amount" type="measure"/>
-                <field name="paid_amount" type="measure"/>
-                <field name="balance" type="measure"/>
+                <field name="invoiced_amount_usd" type="measure"/>
+                <field name="paid_amount_usd" type="measure"/>
+                <field name="balance_usd" type="measure"/>
             </pivot>
         </field>
     </record>
@@ -141,8 +141,8 @@
                 <field name="product_id"/>
                 <field name="categ_id"/>
                 <field name="stock"/>
-                <field name="cost"/>
-                <field name="total_value" sum="Total"/>
+                <field name="cost_usd" string="Costo ($)"/>
+                <field name="total_value_usd" string="Valor ($)" sum="Total"/>
                 <field name="cumulative_percentage" widget="progressbar"/>
                 <field name="classification" widget="badge" decoration-success="classification == 'A'" decoration-warning="classification == 'B'" decoration-danger="classification == 'C'"/>
             </list>
@@ -155,7 +155,7 @@
         <field name="arch" type="xml">
             <pivot string="Resumen ABC">
                 <field name="classification" type="row"/>
-                <field name="total_value" type="measure"/>
+                <field name="total_value_usd" type="measure" string="Valor Total ($)"/>
             </pivot>
         </field>
     </record>

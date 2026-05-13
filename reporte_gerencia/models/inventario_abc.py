@@ -5,18 +5,20 @@ class ReporteGerenciaInventarioABC(models.Model):
     _name = 'reporte.gerencia.inventario.abc'
     _description = 'Clasificación ABC de Inventario'
     _auto = False
-    _order = 'total_value desc'
+    _order = 'total_value_usd desc'
 
     product_id = fields.Many2one('product.product', 'Producto', readonly=True)
     categ_id = fields.Many2one('product.category', 'Categoría', readonly=True)
     stock = fields.Float('Existencia', readonly=True)
-    cost = fields.Float('Costo Unitario', readonly=True)
-    total_value = fields.Float('Valor del Inventario', readonly=True)
+    cost = fields.Float('Costo (Bs)', readonly=True)
+    total_value = fields.Float('Valor (Bs)', readonly=True)
+    cost_usd = fields.Float('Costo ($)', readonly=True)
+    total_value_usd = fields.Float('Valor ($)', readonly=True)
     cumulative_percentage = fields.Float('% Acumulado', readonly=True)
     classification = fields.Selection([
-        ('A', 'Alta Rotación/Valor (A)'),
-        ('B', 'Media Rotación/Valor (B)'),
-        ('C', 'Baja Rotación/Valor (C)')
+        ('A', 'Alta Inversión (A)'),
+        ('B', 'Media Inversión (B)'),
+        ('C', 'Baja Inversión (C)')
     ], string='Clasificación', readonly=True)
 
     def init(self):
@@ -28,24 +30,30 @@ class ReporteGerenciaInventarioABC(models.Model):
                         pp.id AS product_id,
                         pt.categ_id,
                         SUM(COALESCE(sq.quantity, 0)) as stock,
+                        -- Costo en BS (JSONB en Odoo 18)
                         (pp.standard_price->>'1')::numeric as cost,
-                        SUM(COALESCE(sq.quantity, 0)) * (pp.standard_price->>'1')::numeric as total_value
+                        -- Costo en USD (numérico en Odoo 18 si base_contable está presente)
+                        pp.standard_price_usd as cost_usd,
+                        -- Valores Totales
+                        SUM(COALESCE(sq.quantity, 0)) * (pp.standard_price->>'1')::numeric as total_value,
+                        SUM(COALESCE(sq.quantity, 0)) * pp.standard_price_usd as total_value_usd
                     FROM product_product pp
                     JOIN product_template pt ON pt.id = pp.product_tmpl_id
                     LEFT JOIN stock_quant sq ON sq.product_id = pp.id
+                    LEFT JOIN stock_location sl ON sl.id = sq.location_id
                     WHERE pt.type = 'product'
-                    GROUP BY pp.id, pt.categ_id, pp.standard_price
-                    HAVING SUM(COALESCE(sq.quantity, 0)) > 0
+                    AND (sl.usage = 'internal' OR sl.id IS NULL)
+                    GROUP BY pp.id, pt.categ_id, pp.standard_price, pp.standard_price_usd
                 ),
                 total_inv AS (
-                    SELECT SUM(total_value) as grand_total FROM product_values
+                    SELECT SUM(total_value_usd) as grand_total FROM product_values
                 ),
                 calculated_abc AS (
                     SELECT 
                         pv.*,
                         ti.grand_total,
-                        SUM(pv.total_value) OVER (ORDER BY pv.total_value DESC) as cumulative_value,
-                        (SUM(pv.total_value) OVER (ORDER BY pv.total_value DESC) / NULLIF(ti.grand_total, 0)) * 100 as cumulative_percentage
+                        SUM(pv.total_value_usd) OVER (ORDER BY pv.total_value_usd DESC) as cumulative_value,
+                        (SUM(pv.total_value_usd) OVER (ORDER BY pv.total_value_usd DESC) / NULLIF(ti.grand_total, 0)) * 100 as cumulative_percentage
                     FROM product_values pv, total_inv ti
                 )
                 SELECT 
@@ -55,7 +63,9 @@ class ReporteGerenciaInventarioABC(models.Model):
                     stock,
                     cost,
                     total_value,
-                    cumulative_percentage,
+                    cost_usd,
+                    total_value_usd,
+                    COALESCE(cumulative_percentage, 0) as cumulative_percentage,
                     CASE 
                         WHEN cumulative_percentage <= 80 THEN 'A'
                         WHEN cumulative_percentage <= 95 THEN 'B'
