@@ -28,8 +28,8 @@ class ReporteGerenciaInventarioABC(models.Model):
                         pp.id AS product_id,
                         pt.categ_id,
                         SUM(COALESCE(sq.quantity, 0)) as stock,
-                        pp.standard_price as cost,
-                        SUM(COALESCE(sq.quantity, 0)) * pp.standard_price as total_value
+                        (pp.standard_price->>'1')::numeric as cost,
+                        SUM(COALESCE(sq.quantity, 0)) * (pp.standard_price->>'1')::numeric as total_value
                     FROM product_product pp
                     JOIN product_template pt ON pt.id = pp.product_tmpl_id
                     LEFT JOIN stock_quant sq ON sq.product_id = pp.id
