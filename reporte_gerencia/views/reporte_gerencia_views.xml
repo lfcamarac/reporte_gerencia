@@ -92,6 +92,80 @@
         <field name="context">{'search_default_group_partner': 1}</field>
     </record>
 
+    <!-- Reporte Financiero (CxC / CxP) -->
+    <record id="view_reporte_gerencia_financiero_pivot" model="ir.ui.view">
+        <field name="name">reporte.gerencia.financiero.pivot</field>
+        <field name="model">reporte.gerencia.financiero</field>
+        <field name="arch" type="xml">
+            <pivot string="Análisis CxC y CxP">
+                <field name="partner_id" type="row"/>
+                <field name="account_type" type="col"/>
+                <field name="invoiced_amount" type="measure"/>
+                <field name="paid_amount" type="measure"/>
+                <field name="balance" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_reporte_gerencia_financiero_search" model="ir.ui.view">
+        <field name="name">reporte.gerencia.financiero.search</field>
+        <field name="model">reporte.gerencia.financiero</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="partner_id"/>
+                <field name="account_type"/>
+                <filter string="Cuentas por Cobrar" name="receivable" domain="[('account_type', '=', 'asset_receivable')]"/>
+                <filter string="Cuentas por Pagar" name="payable" domain="[('account_type', '=', 'liability_payable')]"/>
+                <group expand="1" string="Agrupar Por">
+                    <filter string="Contacto" name="group_partner" context="{'group_by': 'partner_id'}"/>
+                    <filter string="Tipo" name="group_type" context="{'group_by': 'account_type'}"/>
+                    <filter string="Fecha" name="group_date" context="{'group_by': 'date:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_reporte_gerencia_financiero" model="ir.actions.act_window">
+        <field name="name">Estado de CxC y CxP</field>
+        <field name="res_model">reporte.gerencia.financiero</field>
+        <field name="view_mode">pivot</field>
+        <field name="context">{'search_default_group_partner': 1}</field>
+    </record>
+
+    <!-- Inventario ABC -->
+    <record id="view_reporte_gerencia_inventario_abc_tree" model="ir.ui.view">
+        <field name="name">reporte.gerencia.inventario.abc.tree</field>
+        <field name="model">reporte.gerencia.inventario.abc</field>
+        <field name="arch" type="xml">
+            <list string="Clasificación ABC" decoration-danger="classification == 'C'" decoration-warning="classification == 'B'" decoration-success="classification == 'A'">
+                <field name="product_id"/>
+                <field name="categ_id"/>
+                <field name="stock"/>
+                <field name="cost"/>
+                <field name="total_value" sum="Total"/>
+                <field name="cumulative_percentage" widget="progressbar"/>
+                <field name="classification" widget="badge" decoration-success="classification == 'A'" decoration-warning="classification == 'B'" decoration-danger="classification == 'C'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_reporte_gerencia_inventario_abc_pivot" model="ir.ui.view">
+        <field name="name">reporte.gerencia.inventario.abc.pivot</field>
+        <field name="model">reporte.gerencia.inventario.abc</field>
+        <field name="arch" type="xml">
+            <pivot string="Resumen ABC">
+                <field name="classification" type="row"/>
+                <field name="total_value" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="action_reporte_gerencia_inventario_abc" model="ir.actions.act_window">
+        <field name="name">Clasificación ABC de Inventario</field>
+        <field name="res_model">reporte.gerencia.inventario.abc</field>
+        <field name="view_mode">list,pivot</field>
+    </record>
+
     <!-- Menús -->
     <menuitem id="menu_reporte_gerencia_root" 
               name="Gerencia" 
@@ -103,13 +177,23 @@
               name="Ventas Consolidadas" 
               parent="menu_reporte_gerencia_root" 
               action="action_reporte_gerencia_ventas" 
-              sequence="10"
-              groups="group_gerencia_manager"/>
+              sequence="10"/>
 
     <menuitem id="menu_reporte_gerencia_compras" 
               name="Compras / Proveedores" 
               parent="menu_reporte_gerencia_root" 
               action="action_reporte_gerencia_compras" 
-              sequence="20"
-              groups="group_gerencia_manager"/>
+              sequence="20"/>
+
+    <menuitem id="menu_reporte_gerencia_financiero" 
+              name="CxC y CxP" 
+              parent="menu_reporte_gerencia_root" 
+              action="action_reporte_gerencia_financiero" 
+              sequence="30"/>
+
+    <menuitem id="menu_reporte_gerencia_inventario_abc" 
+              name="Inventario ABC" 
+              parent="menu_reporte_gerencia_root" 
+              action="action_reporte_gerencia_inventario_abc" 
+              sequence="40"/>
 </odoo>
