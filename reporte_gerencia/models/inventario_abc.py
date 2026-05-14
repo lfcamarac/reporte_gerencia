@@ -31,19 +31,19 @@ class ReporteGerenciaInventarioABC(models.Model):
                         pt.categ_id,
                         SUM(COALESCE(sq.quantity, 0)) as stock,
                         -- Costo en BS
-                        pp.standard_price as cost,
-                        -- Costo en USD (numérico en Odoo 18 si base_contable está presente)
-                        pp.standard_price_usd as cost_usd,
+                        pt.standard_price as cost,
+                        -- Costo en USD
+                        pt.standard_price_usd as cost_usd,
                         -- Valores Totales
-                        SUM(COALESCE(sq.quantity, 0)) * pp.standard_price as total_value,
-                        SUM(COALESCE(sq.quantity, 0)) * pp.standard_price_usd as total_value_usd
+                        SUM(COALESCE(sq.quantity, 0)) * pt.standard_price as total_value,
+                        SUM(COALESCE(sq.quantity, 0)) * pt.standard_price_usd as total_value_usd
                     FROM product_product pp
                     JOIN product_template pt ON pt.id = pp.product_tmpl_id
                     LEFT JOIN stock_quant sq ON sq.product_id = pp.id
                     LEFT JOIN stock_location sl ON sl.id = sq.location_id
                     WHERE pt.type = 'product'
                     AND (sl.usage = 'internal' OR sl.id IS NULL)
-                    GROUP BY pp.id, pt.categ_id, pp.standard_price, pp.standard_price_usd
+                    GROUP BY pp.id, pt.categ_id, pt.standard_price, pt.standard_price_usd
                 ),
                 total_inv AS (
                     SELECT SUM(total_value_usd) as grand_total FROM product_values
@@ -57,7 +57,7 @@ class ReporteGerenciaInventarioABC(models.Model):
                     FROM product_values pv, total_inv ti
                 )
                 SELECT 
-                    product_id AS id,
+                    row_number() OVER () AS id,
                     product_id,
                     categ_id,
                     stock,
