@@ -33,6 +33,7 @@
         'security/security.xml',
         'security/ir.model.access.csv',
         'views/reporte_gerencia_views.xml',
+        'data/dashboard_gerencia.xml',
     ],
     'installable': True,
     'application': True,

@@ -21,22 +21,35 @@ class ReporteGerenciaCompras(models.Model):
         tools.drop_view_if_exists(self.env.cr, self._table)
         self.env.cr.execute("""
             CREATE OR REPLACE VIEW %s AS (
+                WITH consolidated_purchases AS (
+                    SELECT
+                        po.date_order AS date,
+                        pol.product_id AS product_id,
+                        po.partner_id AS partner_id,
+                        pt.categ_id AS categ_id,
+                        CAST(SPLIT_PART(pc.parent_path, '/', 1) AS INTEGER) AS main_categ_id,
+                        pol.product_qty AS quantity,
+                        pol.price_total AS price_total,
+                        (pol.price_total / NULLIF(po.x_tasa, 0)) AS price_total_usd
+                    FROM purchase_order_line pol
+                    JOIN purchase_order po ON po.id = pol.order_id
+                    JOIN product_product pp ON pp.id = pol.product_id
+                    JOIN product_template pt ON pt.id = pp.product_tmpl_id
+                    JOIN product_category pc ON pc.id = pt.categ_id
+                    WHERE po.state IN ('purchase', 'done')
+                )
                 SELECT
                     row_number() OVER () AS id,
-                    po.date_order AS date,
-                    pol.product_id AS product_id,
-                    po.partner_id AS partner_id,
-                    pt.categ_id AS categ_id,
-                    CAST(SPLIT_PART(pc.parent_path, '/', 1) AS INTEGER) AS main_categ_id,
-                    TRIM(SPLIT_PART((SELECT name FROM product_category WHERE id = CAST(SPLIT_PART(pc.parent_path, '/', 1) AS INTEGER)), ' / ', 1)) AS main_categ_name,
-                    pol.product_qty AS quantity,
-                    pol.price_total AS price_total,
-                    (pol.price_total / NULLIF(po.x_tasa, 0)) AS price_total_usd
-                FROM purchase_order_line pol
-                JOIN purchase_order po ON po.id = pol.order_id
-                JOIN product_product pp ON pp.id = pol.product_id
-                JOIN product_template pt ON pt.id = pp.product_tmpl_id
-                JOIN product_category pc ON pc.id = pt.categ_id
-                WHERE po.state IN ('purchase', 'done')
+                    p.date,
+                    p.product_id,
+                    p.partner_id,
+                    p.categ_id,
+                    p.main_categ_id,
+                    TRIM(SPLIT_PART(rc.name, ' / ', 1)) AS main_categ_name,
+                    p.quantity,
+                    p.price_total,
+                    p.price_total_usd
+                FROM consolidated_purchases p
+                LEFT JOIN product_category rc ON rc.id = p.main_categ_id
             )
         """ % self._table)

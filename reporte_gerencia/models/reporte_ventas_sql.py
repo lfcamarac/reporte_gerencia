@@ -26,54 +26,66 @@ class ReporteGerenciaVentas(models.Model):
         tools.drop_view_if_exists(self.env.cr, self._table)
         self.env.cr.execute("""
             CREATE OR REPLACE VIEW %s AS (
-                -- VENTAS DE POS
+                WITH consolidated_sales AS (
+                    -- VENTAS DE POS
+                    SELECT
+                        pol.create_date AS date,
+                        pol.product_id AS product_id,
+                        pt.categ_id AS categ_id,
+                        CAST(SPLIT_PART(pc.parent_path, '/', 1) AS INTEGER) AS main_categ_id,
+                        pol.qty AS quantity,
+                        pol.price_subtotal_incl AS price_total,
+                        pol.price_subtotal_incl_ref AS price_total_usd,
+                        COALESCE(pol.total_cost, 0) AS cost_total,
+                        (COALESCE(pol.total_cost, 0) * po.currency_rate_ref) AS cost_total_usd,
+                        'pos' AS source,
+                        po.id AS order_id
+                    FROM pos_order_line pol
+                    JOIN pos_order po ON po.id = pol.order_id
+                    JOIN product_product pp ON pp.id = pol.product_id
+                    JOIN product_template pt ON pt.id = pp.product_tmpl_id
+                    JOIN product_category pc ON pc.id = pt.categ_id
+                    WHERE po.state IN ('paid', 'done', 'invoiced')
+
+                    UNION ALL
+
+                    -- VENTAS DE OFICINA (SALE ORDERS)
+                    SELECT
+                        sol.create_date AS date,
+                        sol.product_id AS product_id,
+                        pt.categ_id AS categ_id,
+                        CAST(SPLIT_PART(pc.parent_path, '/', 1) AS INTEGER) AS main_categ_id,
+                        sol.product_uom_qty AS quantity,
+                        sol.price_total AS price_total,
+                        (sol.price_total / NULLIF(so.x_tasa, 0)) AS price_total_usd,
+                        (sol.product_uom_qty * COALESCE(sol.purchase_price, 0)) AS cost_total,
+                        ((sol.product_uom_qty * COALESCE(sol.purchase_price, 0)) / NULLIF(so.x_tasa, 0)) AS cost_total_usd,
+                        'sale' AS source,
+                        so.id AS order_id
+                    FROM sale_order_line sol
+                    JOIN sale_order so ON so.id = sol.order_id
+                    JOIN product_product pp ON pp.id = sol.product_id
+                    JOIN product_template pt ON pt.id = pp.product_tmpl_id
+                    JOIN product_category pc ON pc.id = pt.categ_id
+                    WHERE so.state IN ('sale', 'done') AND sol.product_uom_qty > 0
+                )
                 SELECT
                     row_number() OVER () AS id,
-                    pol.create_date AS date,
-                    pol.product_id AS product_id,
-                    pt.categ_id AS categ_id,
-                    CAST(SPLIT_PART(pc.parent_path, '/', 1) AS INTEGER) AS main_categ_id,
-                    TRIM(SPLIT_PART((SELECT name FROM product_category WHERE id = CAST(SPLIT_PART(pc.parent_path, '/', 1) AS INTEGER)), ' / ', 1)) AS main_categ_name,
-                    pol.qty AS quantity,
-                    pol.price_subtotal_incl AS price_total,
-                    pol.price_subtotal_incl_ref AS price_total_usd,
-                    COALESCE(pol.total_cost, 0) AS cost_total,
-                    (COALESCE(pol.total_cost, 0) / NULLIF(po.currency_rate_ref, 0)) AS cost_total_usd,
-                    (pol.price_subtotal_incl - COALESCE(pol.total_cost, 0)) AS margin,
-                    (pol.price_subtotal_incl_ref - (COALESCE(pol.total_cost, 0) / NULLIF(po.currency_rate_ref, 0))) AS margin_usd,
-                    'pos' AS source,
-                    po.id AS order_id
-                FROM pos_order_line pol
-                JOIN pos_order po ON po.id = pol.order_id
-                JOIN product_product pp ON pp.id = pol.product_id
-                JOIN product_template pt ON pt.id = pp.product_tmpl_id
-                JOIN product_category pc ON pc.id = pt.categ_id
-                WHERE po.state IN ('paid', 'done', 'invoiced')
-
-                UNION ALL
-
-                -- VENTAS DE OFICINA (SALE ORDERS)
-                SELECT
-                    row_number() OVER () + 10000000 AS id,
-                    sol.create_date AS date,
-                    sol.product_id AS product_id,
-                    pt.categ_id AS categ_id,
-                    CAST(SPLIT_PART(pc.parent_path, '/', 1) AS INTEGER) AS main_categ_id,
-                    TRIM(SPLIT_PART((SELECT name FROM product_category WHERE id = CAST(SPLIT_PART(pc.parent_path, '/', 1) AS INTEGER)), ' / ', 1)) AS main_categ_name,
-                    sol.product_uom_qty AS quantity,
-                    sol.price_total AS price_total,
-                    (sol.price_total / NULLIF(so.x_tasa, 0)) AS price_total_usd,
-                    (sol.product_uom_qty * COALESCE(sol.purchase_price, 0)) AS cost_total,
-                    ((sol.product_uom_qty * COALESCE(sol.purchase_price, 0)) / NULLIF(so.x_tasa, 0)) AS cost_total_usd,
-                    (sol.price_total - (sol.product_uom_qty * COALESCE(sol.purchase_price, 0))) AS margin,
-                    ((sol.price_total / NULLIF(so.x_tasa, 0)) - ((sol.product_uom_qty * COALESCE(sol.purchase_price, 0)) / NULLIF(so.x_tasa, 0))) AS margin_usd,
-                    'sale' AS source,
-                    so.id AS order_id
-                FROM sale_order_line sol
-                JOIN sale_order so ON so.id = sol.order_id
-                JOIN product_product pp ON pp.id = sol.product_id
-                JOIN product_template pt ON pt.id = pp.product_tmpl_id
-                JOIN product_category pc ON pc.id = pt.categ_id
-                WHERE so.state IN ('sale', 'done') AND sol.product_uom_qty > 0
+                    s.date,
+                    s.product_id,
+                    s.categ_id,
+                    s.main_categ_id,
+                    TRIM(SPLIT_PART(rc.name, ' / ', 1)) AS main_categ_name,
+                    s.quantity,
+                    s.price_total,
+                    s.price_total_usd,
+                    s.cost_total,
+                    s.cost_total_usd,
+                    (s.price_total - s.cost_total) AS margin,
+                    (s.price_total_usd - s.cost_total_usd) AS margin_usd,
+                    s.source,
+                    s.order_id
+                FROM consolidated_sales s
+                LEFT JOIN product_category rc ON rc.id = s.main_categ_id
             )
         """ % self._table)

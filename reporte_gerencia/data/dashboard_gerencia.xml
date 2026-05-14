@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="spreadsheet_dashboard_group_gerencia" model="spreadsheet.dashboard.group">
+        <field name="name">Gerencia</field>
+        <field name="sequence">100</field>
+    </record>
+
+    <record id="spreadsheet_dashboard_gerencia" model="spreadsheet.dashboard">
+        <field name="name">Tablero Gerencial</field>
+        <field name="spreadsheet_binary_data" type="base64" file="reporte_gerencia/data/files/gerencia_dashboard.json"/>
+        <field name="dashboard_group_id" ref="spreadsheet_dashboard_group_gerencia"/>
+        <field name="sequence">10</field>
+        <field name="is_published">True</field>
+    </record>
+</odoo>

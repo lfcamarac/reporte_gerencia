@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "sheets": [
+    {
+      "id": "sheet1",
+      "name": "Dashboard",
+      "cells": {
+        "A1": { "content": "Tablero de Gerencia" }
+      }
+    }
+  ],
+  "entities": {}
+}
