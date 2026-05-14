@@ -30,12 +30,12 @@ class ReporteGerenciaInventarioABC(models.Model):
                         pp.id AS product_id,
                         pt.categ_id AS categ_id,
                         SUM(COALESCE(sq.quantity, 0)) AS stock,
-                        -- Costo en BS
-                        COALESCE(pt.standard_price, 0) AS cost,
+                        -- Costo en BS (Extrayendo de JSONB de Odoo 18)
+                        (COALESCE(pt.standard_price->>'1', '0'))::numeric AS cost,
                         -- Costo en USD
                         COALESCE(pt.standard_price_usd, 0) AS cost_usd,
                         -- Valores Totales
-                        SUM(COALESCE(sq.quantity, 0)) * COALESCE(pt.standard_price, 0) AS total_value,
+                        SUM(COALESCE(sq.quantity, 0)) * (COALESCE(pt.standard_price->>'1', '0'))::numeric AS total_value,
                         SUM(COALESCE(sq.quantity, 0)) * COALESCE(pt.standard_price_usd, 0) AS total_value_usd
                     FROM product_product pp
                     JOIN product_template pt ON pt.id = pp.product_tmpl_id
