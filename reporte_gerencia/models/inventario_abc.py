@@ -30,12 +30,12 @@ class ReporteGerenciaInventarioABC(models.Model):
                         pp.id AS product_id,
                         pt.categ_id AS categ_id,
                         SUM(COALESCE(sq.quantity, 0)) AS stock,
-                        -- Costo en BS (Extrayendo de JSONB de Odoo 18)
-                        (COALESCE(pt.standard_price->>'1', '0'))::numeric AS cost,
-                        -- Costo en USD
+                        -- En Odoo 18 standard_price reside físicamente en product_product
+                        (COALESCE(pp.standard_price->>'1', '0'))::numeric AS cost,
+                        -- standard_price_usd suele estar en product_template (base_contable)
                         COALESCE(pt.standard_price_usd, 0) AS cost_usd,
                         -- Valores Totales
-                        SUM(COALESCE(sq.quantity, 0)) * (COALESCE(pt.standard_price->>'1', '0'))::numeric AS total_value,
+                        SUM(COALESCE(sq.quantity, 0)) * (COALESCE(pp.standard_price->>'1', '0'))::numeric AS total_value,
                         SUM(COALESCE(sq.quantity, 0)) * COALESCE(pt.standard_price_usd, 0) AS total_value_usd
                     FROM product_product pp
                     JOIN product_template pt ON pt.id = pp.product_tmpl_id
@@ -43,7 +43,7 @@ class ReporteGerenciaInventarioABC(models.Model):
                     LEFT JOIN stock_location sl ON sl.id = sq.location_id
                     WHERE pt.type = 'product'
                     AND (sl.usage = 'internal' OR sl.id IS NULL)
-                    GROUP BY pp.id, pt.categ_id, pt.standard_price, pt.standard_price_usd
+                    GROUP BY pp.id, pt.categ_id, pp.standard_price, pt.standard_price_usd
                 ),
                 total_inv AS (
                     SELECT SUM(total_value_usd) AS grand_total FROM product_values
