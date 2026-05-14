@@ -25,38 +25,42 @@ class ReporteGerenciaInventarioABC(models.Model):
         self.env.cr.execute("DROP VIEW IF EXISTS %s CASCADE" % self._table)
         self.env.cr.execute("""
             CREATE OR REPLACE VIEW %s AS (
-                WITH product_values AS (
+                WITH product_stock AS (
+                    -- Obtener stock consolidado por producto en ubicaciones internas
+                    SELECT 
+                        sq.product_id,
+                        SUM(sq.quantity) AS quantity
+                    FROM stock_quant sq
+                    JOIN stock_location sl ON sl.id = sq.location_id
+                    WHERE sl.usage = 'internal'
+                    GROUP BY sq.product_id
+                ),
+                product_values AS (
+                    -- Calcular valores base por producto
                     SELECT 
                         pp.id AS product_id,
                         pt.categ_id AS categ_id,
-                        SUM(COALESCE(sq.quantity, 0)) AS stock,
-                        -- En Odoo 18 standard_price reside físicamente en product_product
+                        COALESCE(ps.quantity, 0) AS stock,
+                        -- Costo en BS (JSONB en Odoo 18)
                         (COALESCE(pp.standard_price->>'1', '0'))::numeric AS cost,
-                        -- standard_price_usd suele estar en product_template (base_contable)
+                        -- Costo en USD (campo custom de base_contable en template)
                         COALESCE(pt.standard_price_usd, 0) AS cost_usd,
                         -- Valores Totales
-                        SUM(COALESCE(sq.quantity, 0)) * (COALESCE(pp.standard_price->>'1', '0'))::numeric AS total_value,
-                        SUM(COALESCE(sq.quantity, 0)) * COALESCE(pt.standard_price_usd, 0) AS total_value_usd
+                        COALESCE(ps.quantity, 0) * (COALESCE(pp.standard_price->>'1', '0'))::numeric AS total_value,
+                        COALESCE(ps.quantity, 0) * COALESCE(pt.standard_price_usd, 0) AS total_value_usd
                     FROM product_product pp
                     JOIN product_template pt ON pt.id = pp.product_tmpl_id
-                    LEFT JOIN stock_quant sq ON sq.product_id = pp.id
-                    LEFT JOIN stock_location sl ON sl.id = sq.location_id
-                    WHERE pt.type = 'product'
-                    AND (sl.usage = 'internal' OR sl.id IS NULL)
-                    GROUP BY pp.id, pt.categ_id, pp.standard_price, pt.standard_price_usd
+                    LEFT JOIN product_stock ps ON ps.product_id = pp.id
+                    WHERE (pt.is_storable = True OR pt.type = 'product')
+                    AND pt.active = True
                 ),
                 total_inv AS (
                     SELECT SUM(total_value_usd) AS grand_total FROM product_values
                 ),
                 calculated_abc AS (
+                    -- Calcular porcentajes y acumulados para el ranking ABC
                     SELECT 
-                        pv.product_id,
-                        pv.categ_id,
-                        pv.stock,
-                        pv.cost,
-                        pv.cost_usd,
-                        pv.total_value,
-                        pv.total_value_usd,
+                        pv.*,
                         ti.grand_total,
                         SUM(pv.total_value_usd) OVER (ORDER BY pv.total_value_usd DESC, pv.product_id ASC) AS cumulative_value
                     FROM product_values pv
