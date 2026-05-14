@@ -31,6 +31,8 @@
             <search>
                 <field name="product_id"/>
                 <field name="main_categ_name"/>
+                <filter string="Con Venta" name="with_value" domain="[('price_total_usd', '!=', 0)]"/>
+                <separator/>
                 <filter string="Fecha" name="filter_date" date="date"/>
                 <separator/>
                 <filter string="Este Mes" name="this_month" domain="[('date', '&gt;=', context_today().strftime('%%Y-%%m-01')), ('date', '&lt;', (context_today() + relativedelta(day=1, months=1)).strftime('%%Y-%%m-01'))]"/>
@@ -49,7 +51,7 @@
         <field name="name">Análisis de Ventas Consolidadas</field>
         <field name="res_model">reporte.gerencia.ventas</field>
         <field name="view_mode">pivot,graph</field>
-        <field name="context">{'search_default_group_main_categ': 1, 'search_default_this_month': 1}</field>
+        <field name="context">{'search_default_group_main_categ': 1, 'search_default_this_month': 1, 'search_default_with_value': 1}</field>
     </record>
 
     <record id="view_reporte_gerencia_compras_pivot" model="ir.ui.view">
@@ -79,8 +81,9 @@
         <field name="model">reporte.gerencia.compras</field>
         <field name="arch" type="xml">
             <search>
-                <field name="partner_id"/>
                 <field name="main_categ_name"/>
+                <filter string="Con Compra" name="with_value" domain="[('price_total_usd', '!=', 0)]"/>
+                <separator/>
                 <filter string="Fecha" name="filter_date" date="date"/>
                 <separator/>
                 <filter string="Este Mes" name="this_month" domain="[('date', '&gt;=', context_today().strftime('%%Y-%%m-01')), ('date', '&lt;', (context_today() + relativedelta(day=1, months=1)).strftime('%%Y-%%m-01'))]"/>
@@ -99,7 +102,7 @@
         <field name="name">Ranking de Proveedores</field>
         <field name="res_model">reporte.gerencia.compras</field>
         <field name="view_mode">graph,pivot</field>
-        <field name="context">{'search_default_group_partner': 1, 'search_default_this_month': 1}</field>
+        <field name="context">{'search_default_group_partner': 1, 'search_default_this_month': 1, 'search_default_with_value': 1}</field>
     </record>
 
     <!-- Reporte Financiero (CxC / CxP) -->
@@ -127,6 +130,8 @@
                 <filter string="Cuentas por Cobrar" name="receivable" domain="[('account_type', '=', 'asset_receivable')]"/>
                 <filter string="Cuentas por Pagar" name="payable" domain="[('account_type', '=', 'liability_payable')]"/>
                 <separator/>
+                <filter string="Con Saldo" name="with_value" domain="[('balance_usd', '!=', 0)]"/>
+                <separator/>
                 <filter string="Fecha" name="filter_date" date="date"/>
                 <separator/>
                 <filter string="Este Mes" name="this_month" domain="[('date', '&gt;=', context_today().strftime('%%Y-%%m-01')), ('date', '&lt;', (context_today() + relativedelta(day=1, months=1)).strftime('%%Y-%%m-01'))]"/>
@@ -145,7 +150,7 @@
         <field name="name">Estado de CxC y CxP</field>
         <field name="res_model">reporte.gerencia.financiero</field>
         <field name="view_mode">pivot</field>
-        <field name="context">{'search_default_group_partner': 1, 'search_default_this_month': 1}</field>
+        <field name="context">{'search_default_group_partner': 1, 'search_default_this_month': 1, 'search_default_with_value': 1}</field>
     </record>
 
     <!-- Inventario ABC -->
@@ -176,10 +181,31 @@
         </field>
     </record>
 
+    <record id="view_reporte_gerencia_inventario_abc_search" model="ir.ui.view">
+        <field name="name">reporte.gerencia.inventario.abc.search</field>
+        <field name="model">reporte.gerencia.inventario.abc</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="product_id"/>
+                <field name="categ_id"/>
+                <filter string="Con Inversión" name="with_value" domain="[('total_value_usd', '!=', 0)]"/>
+                <separator/>
+                <filter string="Clase A" name="class_a" domain="[('classification', '=', 'A')]"/>
+                <filter string="Clase B" name="class_b" domain="[('classification', '=', 'B')]"/>
+                <filter string="Clase C" name="class_c" domain="[('classification', '=', 'C')]"/>
+                <group expand="1" string="Agrupar Por">
+                    <filter string="Categoría" name="group_categ" context="{'group_by': 'categ_id'}"/>
+                    <filter string="Clasificación" name="group_class" context="{'group_by': 'classification'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
     <record id="action_reporte_gerencia_inventario_abc" model="ir.actions.act_window">
         <field name="name">Clasificación ABC de Inventario</field>
         <field name="res_model">reporte.gerencia.inventario.abc</field>
         <field name="view_mode">list,pivot</field>
+        <field name="context">{'search_default_with_value': 1}</field>
     </record>
 
     <!-- Menús -->
