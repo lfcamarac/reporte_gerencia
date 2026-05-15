@@ -27,7 +27,7 @@ class ReporteGerenciaCompras(models.Model):
                         pol.product_id AS product_id,
                         po.partner_id AS partner_id,
                         pt.categ_id AS categ_id,
-                        CAST(SPLIT_PART(pc.parent_path, '/', 1) AS INTEGER) AS main_categ_id,
+                        CAST(NULLIF(SPLIT_PART(pc.parent_path, '/', 1), '') AS INTEGER) AS main_categ_id,
                         pol.product_qty AS quantity,
                         pol.price_total AS price_total,
                         (pol.price_total / NULLIF(po.x_tasa, 0)) AS price_total_usd

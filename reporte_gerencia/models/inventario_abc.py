@@ -41,7 +41,7 @@ class ReporteGerenciaInventarioABC(models.Model):
                     SELECT 
                         pp.id AS product_id,
                         pt.categ_id AS categ_id,
-                        CAST(SPLIT_PART(pc.parent_path, '/', 1) AS INTEGER) AS main_categ_id,
+                        CAST(NULLIF(SPLIT_PART(pc.parent_path, '/', 1), '') AS INTEGER) AS main_categ_id,
                         COALESCE(ps.quantity, 0) AS stock,
                         -- Costo en BS (JSONB en Odoo 18)
                         (COALESCE(pp.standard_price->>'1', '0'))::numeric AS cost,

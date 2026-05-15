@@ -31,10 +31,10 @@ class ReporteGerenciaVentas(models.Model):
                     -- VENTAS DE POS
                     SELECT
                         pol.create_date AS date,
-                        pol.product_id AS product_id,
+                        sol.product_id AS product_id,
                         pt.categ_id AS categ_id,
-                        CAST(SPLIT_PART(pc.parent_path, '/', 1) AS INTEGER) AS main_categ_id,
-                        pol.qty AS quantity,
+                        CAST(NULLIF(SPLIT_PART(pc.parent_path, '/', 1), '') AS INTEGER) AS main_categ_id,
+                        sol.product_uom_qty AS quantity,
                         pol.price_subtotal_incl AS price_total,
                         pol.price_subtotal_incl_ref AS price_total_usd,
                         COALESCE(pol.total_cost, 0) AS cost_total,
