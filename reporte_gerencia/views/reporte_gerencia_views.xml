@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!-- VENTAS -->
     <record id="view_reporte_gerencia_ventas_pivot" model="ir.ui.view">
         <field name="name">reporte.gerencia.ventas.pivot</field>
         <field name="model">reporte.gerencia.ventas</field>
@@ -24,12 +25,20 @@
         </field>
     </record>
 
-    <record id="action_reporte_gerencia_ventas" model="ir.actions.act_window">
-        <field name="name">Análisis de Ventas Consolidadas</field>
-        <field name="res_model">reporte.gerencia.ventas</field>
-        <field name="view_mode">pivot,graph</field>
-        <field name="search_view_id" ref="view_reporte_gerencia_ventas_search"/>
-        <field name="context">{'search_default_group_main_categ': 1, 'search_default_this_month': 1, 'search_default_with_value': 1}</field>
+    <record id="view_reporte_gerencia_ventas_tree" model="ir.ui.view">
+        <field name="name">reporte.gerencia.ventas.tree</field>
+        <field name="model">reporte.gerencia.ventas</field>
+        <field name="arch" type="xml">
+            <list string="Detalle de Ventas">
+                <field name="date"/>
+                <field name="product_id"/>
+                <field name="main_categ_name"/>
+                <field name="quantity" sum="Total"/>
+                <field name="price_total_usd" sum="Total $"/>
+                <field name="margin_usd" sum="Total Utilidad"/>
+                <field name="source"/>
+            </list>
+        </field>
     </record>
 
     <record id="view_reporte_gerencia_ventas_search" model="ir.ui.view">
@@ -41,8 +50,7 @@
                 <field name="main_categ_name"/>
                 <filter string="Con Venta" name="with_value" domain="[('price_total_usd', '!=', 0)]"/>
                 <separator/>
-                <filter string="Fecha" name="this_month" date="date" default_period="this_month"/>
-                <filter string="Mes Pasado" name="last_month" date="date" default_period="last_month"/>
+                <filter string="Fecha" name="filter_date" date="date"/>
                 <separator/>
                 <group expand="1" string="Agrupar Por">
                     <filter string="Categoría Principal" name="group_main_categ" context="{'group_by': 'main_categ_name'}"/>
@@ -53,6 +61,15 @@
         </field>
     </record>
 
+    <record id="action_reporte_gerencia_ventas" model="ir.actions.act_window">
+        <field name="name">Análisis de Ventas Consolidadas</field>
+        <field name="res_model">reporte.gerencia.ventas</field>
+        <field name="view_mode">pivot,graph,list</field>
+        <field name="search_view_id" ref="view_reporte_gerencia_ventas_search"/>
+        <field name="context">{'search_default_group_main_categ': 1}</field>
+    </record>
+
+    <!-- COMPRAS -->
     <record id="view_reporte_gerencia_compras_pivot" model="ir.ui.view">
         <field name="name">reporte.gerencia.compras.pivot</field>
         <field name="model">reporte.gerencia.compras</field>
@@ -75,18 +92,29 @@
         </field>
     </record>
 
+    <record id="view_reporte_gerencia_compras_tree" model="ir.ui.view">
+        <field name="name">reporte.gerencia.compras.tree</field>
+        <field name="model">reporte.gerencia.compras</field>
+        <field name="arch" type="xml">
+            <list string="Ranking de Proveedores">
+                <field name="partner_id"/>
+                <field name="main_categ_name"/>
+                <field name="quantity" sum="Total Unidades"/>
+                <field name="price_total_usd" sum="Total Monto $"/>
+            </list>
+        </field>
+    </record>
+
     <record id="view_reporte_gerencia_compras_search" model="ir.ui.view">
         <field name="name">reporte.gerencia.compras.search</field>
         <field name="model">reporte.gerencia.compras</field>
         <field name="arch" type="xml">
             <search>
+                <field name="partner_id"/>
                 <field name="main_categ_name"/>
                 <filter string="Con Compra" name="with_value" domain="[('price_total_usd', '!=', 0)]"/>
                 <separator/>
                 <filter string="Fecha" name="filter_date" date="date"/>
-                <separator/>
-                <filter string="Este Mes" name="this_month" domain="[('date', '&gt;=', context_today().strftime('%%Y-%%m-01')), ('date', '&lt;', (context_today() + relativedelta(day=1, months=1)).strftime('%%Y-%%m-01'))]"/>
-                <filter string="Mes Pasado" name="last_month" domain="[('date', '&gt;=', (context_today() - relativedelta(months=1)).strftime('%%Y-%%m-01')), ('date', '&lt;', context_today().strftime('%%Y-%%m-01'))]"/>
                 <separator/>
                 <group expand="1" string="Agrupar Por">
                     <filter string="Proveedor" name="group_partner" context="{'group_by': 'partner_id'}"/>
@@ -100,11 +128,11 @@
     <record id="action_reporte_gerencia_compras" model="ir.actions.act_window">
         <field name="name">Ranking de Proveedores</field>
         <field name="res_model">reporte.gerencia.compras</field>
-        <field name="view_mode">graph,pivot</field>
-        <field name="context">{'search_default_group_partner': 1, 'search_default_this_month': 1, 'search_default_with_value': 1}</field>
+        <field name="view_mode">graph,pivot,list</field>
+        <field name="context">{'search_default_group_partner': 1}</field>
     </record>
 
-    <!-- Reporte Financiero (CxC / CxP) -->
+    <!-- FINANZAS (CxC / CxP) -->
     <record id="view_reporte_gerencia_financiero_pivot" model="ir.ui.view">
         <field name="name">reporte.gerencia.financiero.pivot</field>
         <field name="model">reporte.gerencia.financiero</field>
@@ -116,6 +144,21 @@
                 <field name="paid_amount_usd" type="measure"/>
                 <field name="balance_usd" type="measure"/>
             </pivot>
+        </field>
+    </record>
+
+    <record id="view_reporte_gerencia_financiero_tree" model="ir.ui.view">
+        <field name="name">reporte.gerencia.financiero.tree</field>
+        <field name="model">reporte.gerencia.financiero</field>
+        <field name="arch" type="xml">
+            <list string="Detalle CxC / CxP">
+                <field name="date"/>
+                <field name="partner_id"/>
+                <field name="account_type"/>
+                <field name="invoiced_amount_usd" sum="Total"/>
+                <field name="paid_amount_usd" sum="Total"/>
+                <field name="balance_usd" sum="Total"/>
+            </list>
         </field>
     </record>
 
@@ -133,9 +176,6 @@
                 <separator/>
                 <filter string="Fecha" name="filter_date" date="date"/>
                 <separator/>
-                <filter string="Este Mes" name="this_month" domain="[('date', '&gt;=', context_today().strftime('%%Y-%%m-01')), ('date', '&lt;', (context_today() + relativedelta(day=1, months=1)).strftime('%%Y-%%m-01'))]"/>
-                <filter string="Mes Pasado" name="last_month" domain="[('date', '&gt;=', (context_today() - relativedelta(months=1)).strftime('%%Y-%%m-01')), ('date', '&lt;', context_today().strftime('%%Y-%%m-01'))]"/>
-                <separator/>
                 <group expand="1" string="Agrupar Por">
                     <filter string="Contacto" name="group_partner" context="{'group_by': 'partner_id'}"/>
                     <filter string="Tipo" name="group_type" context="{'group_by': 'account_type'}"/>
@@ -148,11 +188,11 @@
     <record id="action_reporte_gerencia_financiero" model="ir.actions.act_window">
         <field name="name">Estado de CxC y CxP</field>
         <field name="res_model">reporte.gerencia.financiero</field>
-        <field name="view_mode">pivot</field>
-        <field name="context">{'search_default_group_partner': 1, 'search_default_this_month': 1, 'search_default_with_value': 1}</field>
+        <field name="view_mode">pivot,list</field>
+        <field name="context">{'search_default_group_partner': 1}</field>
     </record>
 
-    <!-- Inventario ABC -->
+    <!-- INVENTARIO ABC -->
     <record id="view_reporte_gerencia_inventario_abc_tree" model="ir.ui.view">
         <field name="name">reporte.gerencia.inventario.abc.tree</field>
         <field name="model">reporte.gerencia.inventario.abc</field>
@@ -210,7 +250,7 @@
         <field name="context">{'search_default_with_value': 1}</field>
     </record>
 
-    <!-- Menús -->
+    <!-- MENÚS -->
     <menuitem id="menu_reporte_gerencia_root" 
               name="Gerencia" 
               sequence="1" 

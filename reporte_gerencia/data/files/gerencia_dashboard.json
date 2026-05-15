@@ -33,11 +33,7 @@
         "D15": { "content": "INVENTARIO ABC", "style": { "bold": true } },
         "D16": { "content": "=PIVOT.HEADER(4, 'classification')" },
         "E16": { "content": "=PIVOT.VALUE(4, 'total_value_usd', 'classification')" }
-      }
-    }
-  ],
-  "entities": {
-    "odoo": {
+      },
       "pivots": {
         "1": {
           "name": "Ventas Consolidadas",
@@ -75,7 +71,11 @@
           "colGroupBys": [],
           "domain": []
         }
-      },
+      }
+    }
+  ],
+  "entities": {
+    "odoo": {
       "globalFilters": [
         {
           "id": "periodo",
