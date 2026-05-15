@@ -24,6 +24,7 @@ class ReporteGerenciaVentas(models.Model):
     order_ref = fields.Char('Referencia de Pedido', readonly=True)
 
     def init(self):
+        # Force refresh of the SQL view with correct table aliases
         tools.drop_view_if_exists(self.env.cr, self._table)
         self.env.cr.execute("""
             CREATE OR REPLACE VIEW %s AS (
