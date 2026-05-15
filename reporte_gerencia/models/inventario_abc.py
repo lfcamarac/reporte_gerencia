@@ -9,6 +9,7 @@ class ReporteGerenciaInventarioABC(models.Model):
 
     product_id = fields.Many2one('product.product', 'Producto', readonly=True)
     categ_id = fields.Many2one('product.category', 'Categoría', readonly=True)
+    main_categ_name = fields.Char('Categoría Principal', readonly=True)
     stock = fields.Float('Existencia', readonly=True)
     cost = fields.Float('Costo (Bs)', readonly=True)
     total_value = fields.Float('Valor (Bs)', readonly=True)
@@ -40,6 +41,7 @@ class ReporteGerenciaInventarioABC(models.Model):
                     SELECT 
                         pp.id AS product_id,
                         pt.categ_id AS categ_id,
+                        CAST(SPLIT_PART(pc.parent_path, '/', 1) AS INTEGER) AS main_categ_id,
                         COALESCE(ps.quantity, 0) AS stock,
                         -- Costo en BS (JSONB en Odoo 18)
                         (COALESCE(pp.standard_price->>'1', '0'))::numeric AS cost,
@@ -50,6 +52,7 @@ class ReporteGerenciaInventarioABC(models.Model):
                         COALESCE(ps.quantity, 0) * COALESCE(pt.standard_price_usd, 0) AS total_value_usd
                     FROM product_product pp
                     JOIN product_template pt ON pt.id = pp.product_tmpl_id
+                    JOIN product_category pc ON pc.id = pt.categ_id
                     LEFT JOIN product_stock ps ON ps.product_id = pp.id
                     WHERE (pt.is_storable = True OR pt.type = 'product')
                     AND pt.active = True
@@ -61,15 +64,18 @@ class ReporteGerenciaInventarioABC(models.Model):
                     -- Calcular porcentajes y acumulados para el ranking ABC
                     SELECT 
                         pv.*,
+                        rc.name AS main_categ_name,
                         ti.grand_total,
                         SUM(pv.total_value_usd) OVER (ORDER BY pv.total_value_usd DESC, pv.product_id ASC) AS cumulative_value
                     FROM product_values pv
                     CROSS JOIN total_inv ti
+                    LEFT JOIN product_category rc ON rc.id = pv.main_categ_id
                 )
                 SELECT 
                     row_number() OVER (ORDER BY total_value_usd DESC, product_id ASC) AS id,
                     product_id,
                     categ_id,
+                    main_categ_name,
                     stock,
                     cost,
                     total_value,

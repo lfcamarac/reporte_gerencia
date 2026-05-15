@@ -1,13 +1,90 @@
 {
-  "version": 1,
+  "version": 16,
   "sheets": [
     {
       "id": "sheet1",
-      "name": "Dashboard",
+      "name": "Resumen Ejecutivo",
       "cells": {
-        "A1": { "content": "Tablero de Gerencia" }
+        "A1": { "content": "TABLERO GERENCIAL CONSOLIDADO", "style": { "bold": true, "fontSize": 14 } },
+        "A3": { "content": "VENTAS Y RENTABILIDAD", "style": { "bold": true } },
+        "A4": { "content": "Ventas Totales ($)" },
+        "A5": { "content": "=PIVOT.VALUE(1, 'price_total_usd')" },
+        "B4": { "content": "Utilidad Bruta ($)" },
+        "B5": { "content": "=PIVOT.VALUE(1, 'margin_usd')" },
+        "C4": { "content": "Margen %" },
+        "C5": { "content": "=IF(A5>0, B5/A5, 0)", "format": "0.00%" },
+        "D4": { "content": "Ticket Promedio ($)" },
+        "D5": { "content": "=IF(PIVOT.VALUE(1, 'order_ref', 'count')>0, A5/PIVOT.VALUE(1, 'order_ref', 'count'), 0)" },
+        
+        "A7": { "content": "VENTAS POR CATEGORÍA", "style": { "bold": true } },
+        "A8": { "content": "=PIVOT.HEADER(1, 'main_categ_name')" },
+        "B8": { "content": "=PIVOT.VALUE(1, 'price_total_usd', 'main_categ_name')" },
+        
+        "D7": { "content": "TOP 10 PROVEEDORES", "style": { "bold": true } },
+        "D8": { "content": "=PIVOT.HEADER(2, 'partner_id')" },
+        "E8": { "content": "=PIVOT.VALUE(2, 'price_total_usd', 'partner_id')" },
+
+        "A15": { "content": "FINANZAS (CxC / CxP)", "style": { "bold": true } },
+        "A16": { "content": "Total CxC ($)" },
+        "A17": { "content": "=PIVOT.VALUE(3, 'balance_usd', 'account_type', 'asset_receivable')" },
+        "B16": { "content": "Total CxP ($)" },
+        "B17": { "content": "=PIVOT.VALUE(3, 'balance_usd', 'account_type', 'liability_payable')" },
+
+        "D15": { "content": "INVENTARIO ABC", "style": { "bold": true } },
+        "D16": { "content": "=PIVOT.HEADER(4, 'classification')" },
+        "E16": { "content": "=PIVOT.VALUE(4, 'total_value_usd', 'classification')" }
       }
     }
   ],
-  "entities": {}
+  "entities": {
+    "odoo": {
+      "pivots": {
+        "1": {
+          "name": "Ventas Consolidadas",
+          "model": "reporte.gerencia.ventas",
+          "measures": [
+            { "field": "price_total_usd", "operator": "sum" },
+            { "field": "margin_usd", "operator": "sum" },
+            { "field": "order_ref", "operator": "count" }
+          ],
+          "rowGroupBys": [{ "field": "main_categ_name" }],
+          "colGroupBys": [],
+          "domain": []
+        },
+        "2": {
+          "name": "Ranking Proveedores",
+          "model": "reporte.gerencia.compras",
+          "measures": [{ "field": "price_total_usd", "operator": "sum" }],
+          "rowGroupBys": [{ "field": "partner_id" }],
+          "colGroupBys": [],
+          "domain": []
+        },
+        "3": {
+          "name": "CxC y CxP",
+          "model": "reporte.gerencia.financiero",
+          "measures": [{ "field": "balance_usd", "operator": "sum" }],
+          "rowGroupBys": [{ "field": "partner_id" }],
+          "colGroupBys": [{ "field": "account_type" }],
+          "domain": []
+        },
+        "4": {
+          "name": "Inventario ABC",
+          "model": "reporte.gerencia.inventario.abc",
+          "measures": [{ "field": "total_value_usd", "operator": "sum" }],
+          "rowGroupBys": [{ "field": "classification" }],
+          "colGroupBys": [],
+          "domain": []
+        }
+      },
+      "globalFilters": [
+        {
+          "id": "periodo",
+          "type": "date",
+          "label": "Periodo",
+          "defaultValue": "this_month",
+          "rangeType": "relative"
+        }
+      ]
+    }
+  }
 }

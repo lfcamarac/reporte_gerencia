@@ -45,7 +45,7 @@ class ReporteGerenciaCompras(models.Model):
                     p.partner_id,
                     p.categ_id,
                     p.main_categ_id,
-                    TRIM(SPLIT_PART(rc.name, ' / ', 1)) AS main_categ_name,
+                    rc.name AS main_categ_name,
                     p.quantity,
                     p.price_total,
                     p.price_total_usd

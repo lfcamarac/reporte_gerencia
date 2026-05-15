@@ -21,6 +21,7 @@ class ReporteGerenciaVentas(models.Model):
     margin_usd = fields.Float('Utilidad ($)', readonly=True)
     source = fields.Selection([('pos', 'Punto de Venta'), ('sale', 'Ventas Oficina')], 'Origen', readonly=True)
     order_id = fields.Integer('ID Pedido', readonly=True)
+    order_ref = fields.Char('Referencia de Pedido', readonly=True)
 
     def init(self):
         tools.drop_view_if_exists(self.env.cr, self._table)
@@ -39,7 +40,8 @@ class ReporteGerenciaVentas(models.Model):
                         COALESCE(pol.total_cost, 0) AS cost_total,
                         (COALESCE(pol.total_cost, 0) * po.currency_rate_ref) AS cost_total_usd,
                         'pos' AS source,
-                        po.id AS order_id
+                        po.id AS order_id,
+                        'POS/' || po.id::text AS order_ref
                     FROM pos_order_line pol
                     JOIN pos_order po ON po.id = pol.order_id
                     JOIN product_product pp ON pp.id = pol.product_id
@@ -54,14 +56,19 @@ class ReporteGerenciaVentas(models.Model):
                         sol.create_date AS date,
                         sol.product_id AS product_id,
                         pt.categ_id AS categ_id,
-                        CAST(SPLIT_PART(pc.parent_path, '/', 1) AS INTEGER) AS main_categ_id,
+                        -- Categoría Principal (Nivel 2 si existe, sino Nivel 1)
+                        COALESCE(
+                            NULLIF(CAST(SPLIT_PART(pc.parent_path, '/', 2) AS INTEGER), 0),
+                            CAST(SPLIT_PART(pc.parent_path, '/', 1) AS INTEGER)
+                        ) AS main_categ_id,
                         sol.product_uom_qty AS quantity,
                         sol.price_total AS price_total,
                         (sol.price_total / NULLIF(so.x_tasa, 0)) AS price_total_usd,
                         (sol.product_uom_qty * COALESCE(sol.purchase_price, 0)) AS cost_total,
                         ((sol.product_uom_qty * COALESCE(sol.purchase_price, 0)) / NULLIF(so.x_tasa, 0)) AS cost_total_usd,
                         'sale' AS source,
-                        so.id AS order_id
+                        so.id AS order_id,
+                        'SO/' || so.id::text AS order_ref
                     FROM sale_order_line sol
                     JOIN sale_order so ON so.id = sol.order_id
                     JOIN product_product pp ON pp.id = sol.product_id
@@ -75,7 +82,7 @@ class ReporteGerenciaVentas(models.Model):
                     s.product_id,
                     s.categ_id,
                     s.main_categ_id,
-                    TRIM(SPLIT_PART(rc.name, ' / ', 1)) AS main_categ_name,
+                    rc.name AS main_categ_name,
                     s.quantity,
                     s.price_total,
                     s.price_total_usd,
@@ -84,7 +91,8 @@ class ReporteGerenciaVentas(models.Model):
                     (s.price_total - s.cost_total) AS margin,
                     (s.price_total_usd - s.cost_total_usd) AS margin_usd,
                     s.source,
-                    s.order_id
+                    s.order_id,
+                    s.order_ref
                 FROM consolidated_sales s
                 LEFT JOIN product_category rc ON rc.id = s.main_categ_id
             )

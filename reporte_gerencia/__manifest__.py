@@ -28,6 +28,7 @@
         'account',
         'spreadsheet_dashboard',
         'base_contable',
+        'pos_dual_currency',
     ],
     'data': [
         'security/security.xml',
