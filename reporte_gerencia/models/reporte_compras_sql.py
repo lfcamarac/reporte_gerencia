@@ -45,7 +45,7 @@ class ReporteGerenciaCompras(models.Model):
                     p.partner_id,
                     p.categ_id,
                     p.main_categ_id,
-                    rc.name AS main_categ_name,
+                    COALESCE(rc.name, 'Sin Categoría') AS main_categ_name,
                     p.quantity,
                     p.price_total,
                     p.price_total_usd

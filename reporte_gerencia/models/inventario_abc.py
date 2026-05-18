@@ -64,7 +64,7 @@ class ReporteGerenciaInventarioABC(models.Model):
                     -- Calcular porcentajes y acumulados para el ranking ABC
                     SELECT 
                         pv.*,
-                        rc.name AS main_categ_name,
+                        COALESCE(rc.name, 'Sin Categoría') AS main_categ_name,
                         ti.grand_total,
                         SUM(pv.total_value_usd) OVER (ORDER BY pv.total_value_usd DESC, pv.product_id ASC) AS cumulative_value
                     FROM product_values pv

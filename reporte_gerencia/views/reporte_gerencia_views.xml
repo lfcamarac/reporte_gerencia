@@ -10,6 +10,7 @@
                 <field name="date" interval="month" type="col"/>
                 <field name="price_total_usd" type="measure"/>
                 <field name="margin_usd" type="measure"/>
+                <field name="order_count" type="measure" string="Nro Pedidos"/>
             </pivot>
         </field>
     </record>
