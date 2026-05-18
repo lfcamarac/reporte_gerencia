@@ -113,8 +113,8 @@ class ReporteGerenciaVentas(models.Model):
                     WHERE am.move_type IN ('out_invoice', 'out_refund')
                     AND am.state = 'posted'
                     AND aml.display_type = 'product'
-                    AND am.id NOT IN (SELECT DISTINCT invoice_id FROM pos_order WHERE invoice_id IS NOT NULL)
-                    AND aml.sale_line_ids IS NULL
+                    AND am.id NOT IN (SELECT DISTINCT account_move FROM pos_order WHERE account_move IS NOT NULL)
+                    AND NOT EXISTS (SELECT 1 FROM sale_order_line_invoice_rel rel WHERE rel.invoice_line_id = aml.id)
                 ),
                 category_hierarchy AS (
                     SELECT 
