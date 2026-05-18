@@ -35,7 +35,6 @@ class ReporteGerenciaVentas(models.Model):
                         pol.create_date AS date,
                         pol.product_id AS product_id,
                         pt.categ_id AS categ_id,
-                        CAST(NULLIF(SPLIT_PART(pc.parent_path, '/', 1), '') AS INTEGER) AS main_categ_id,
                         pol.qty AS quantity,
                         pol.price_subtotal_incl AS price_total,
                         pol.price_subtotal_incl_ref AS price_total_usd,
@@ -58,7 +57,6 @@ class ReporteGerenciaVentas(models.Model):
                         sol.create_date AS date,
                         sol.product_id AS product_id,
                         pt.categ_id AS categ_id,
-                        CAST(NULLIF(SPLIT_PART(pc.parent_path, '/', 1), '') AS INTEGER) AS main_categ_id,
                         sol.product_uom_qty AS quantity,
                         sol.price_total AS price_total,
                         (sol.price_total / NULLIF(so.x_tasa, 0)) AS price_total_usd,
@@ -81,11 +79,9 @@ class ReporteGerenciaVentas(models.Model):
                         am.invoice_date::timestamp AS date,
                         aml.product_id AS product_id,
                         pt.categ_id AS categ_id,
-                        CAST(NULLIF(SPLIT_PART(pc.parent_path, '/', 1), '') AS INTEGER) AS main_categ_id,
                         aml.quantity AS quantity,
                         aml.price_total AS price_total,
                         (aml.price_total / NULLIF(am.tasa, 0)) AS price_total_usd,
-                        -- Intento de obtener costo de la valoración de stock si está disponible
                         COALESCE((
                             SELECT SUM(svl.remaining_value) 
                             FROM stock_valuation_layer svl 
@@ -117,35 +113,41 @@ class ReporteGerenciaVentas(models.Model):
                     WHERE am.move_type IN ('out_invoice', 'out_refund')
                     AND am.state = 'posted'
                     AND aml.display_type = 'product'
-                    -- Excluir las que ya vienen de SO o POS para evitar duplicidad
                     AND am.id NOT IN (SELECT DISTINCT invoice_id FROM pos_order WHERE invoice_id IS NOT NULL)
                     AND aml.sale_line_ids IS NULL
+                ),
+                category_hierarchy AS (
+                    SELECT 
+                        s.*,
+                        CAST(NULLIF(SPLIT_PART(pc.parent_path, '/', 1), '') AS INTEGER) AS main_categ_id
+                    FROM consolidated_sales s
+                    JOIN product_category pc ON pc.id = s.categ_id
                 ),
                 numbered_sales AS (
                     SELECT 
                         s.*,
-                        CAST(NULLIF(SPLIT_PART(pc.parent_path, '/', 1), '') AS INTEGER) AS main_categ_id,
-                        pol.qty AS quantity,
-                        ...
-                        SELECT
-                        row_number() OVER () AS id,
-                        s.date,
-                        s.product_id,
-                        s.categ_id,
-                        s.main_categ_id,
-                        COALESCE(rc.name, 'Sin Categoría') AS main_categ_name,
-                        s.quantity,
-                        s.price_total,
-                        s.price_total_usd,
-                        s.cost_total,
-                        s.cost_total_usd,
-                        (s.price_total - s.cost_total) AS margin,
-                        (s.price_total_usd - s.cost_total_usd) AS margin_usd,
-                        s.source,
-                        s.order_id,
-                        s.order_ref,
-                        CASE WHEN s.row_idx = 1 THEN 1.0 ELSE 0.0 END AS order_count
-                        FROM numbered_sales s
-                        LEFT JOIN product_category rc ON rc.id = s.main_categ_id
-                        )
-                        """ % self._table)
+                        row_number() OVER (PARTITION BY s.order_ref ORDER BY s.date) as row_idx
+                    FROM category_hierarchy s
+                )
+                SELECT
+                    row_number() OVER () AS id,
+                    s.date,
+                    s.product_id,
+                    s.categ_id,
+                    s.main_categ_id,
+                    COALESCE(rc.name, 'Sin Categoría') AS main_categ_name,
+                    s.quantity,
+                    s.price_total,
+                    s.price_total_usd,
+                    s.cost_total,
+                    s.cost_total_usd,
+                    (s.price_total - s.cost_total) AS margin,
+                    (s.price_total_usd - s.cost_total_usd) AS margin_usd,
+                    s.source,
+                    s.order_id,
+                    s.order_ref,
+                    CASE WHEN s.row_idx = 1 THEN 1.0 ELSE 0.0 END AS order_count
+                FROM numbered_sales s
+                LEFT JOIN product_category rc ON rc.id = s.main_categ_id
+            )
+        """ % self._table)
