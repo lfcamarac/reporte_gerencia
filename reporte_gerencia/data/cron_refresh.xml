@@ -13,7 +13,6 @@ env['reporte.gerencia.inventario.abc']._refresh_materialized_view()
             </field>
             <field name="interval_number">30</field>
             <field name="interval_type">minutes</field>
-            <field name="numbercall">-1</field>
             <field name="active">True</field>
         </record>
     </data>
