@@ -24,6 +24,20 @@
       "label": "Periodo",
       "defaultValue": "this_month",
       "rangeType": "relative"
+    },
+    {
+      "id": "f_categoria",
+      "type": "relation",
+      "label": "Categoría",
+      "modelName": "product.category",
+      "defaultValue": [],
+      "includeChildren": true
+    },
+    {
+      "id": "f_canal",
+      "type": "text",
+      "label": "Canal (pos/sale/invoice)",
+      "defaultValue": ""
     }
   ],
   "styles": {
@@ -59,7 +73,9 @@
         "order": "desc"
       },
       "fieldMatching": {
-        "f_periodo": { "chain": "date", "type": "datetime", "offset": 0 }
+        "f_periodo": { "chain": "date", "type": "datetime", "offset": 0 },
+        "f_categoria": { "chain": "main_categ_id", "type": "many2one" },
+        "f_canal": { "chain": "source", "type": "selection" }
       }
     },
     "2": {
@@ -81,7 +97,8 @@
         "order": "desc"
       },
       "fieldMatching": {
-        "f_periodo": { "chain": "date", "type": "date", "offset": 0 }
+        "f_periodo": { "chain": "date", "type": "date", "offset": 0 },
+        "f_categoria": { "chain": "main_categ_id", "type": "many2one" }
       }
     },
     "3": {
@@ -116,7 +133,9 @@
       "columns": [],
       "rows": [{ "fieldName": "classification", "order": "asc" }],
       "sortedColumn": null,
-      "fieldMatching": {}
+      "fieldMatching": {
+        "f_categoria": { "chain": "categ_id", "type": "many2one" }
+      }
     }
   },
   "lists": {},
@@ -127,7 +146,7 @@
       "id": "sheet1",
       "name": "Resumen Ejecutivo",
       "colNumber": 8,
-      "rowNumber": 25,
+      "rowNumber": 30,
       "rows": {},
       "cols": {
         "0": { "size": 180 },
@@ -174,6 +193,21 @@
         "A13": { "content": "=PIVOT.HEADER(1,\"#main_categ_name\",5)" },
         "B13": { "content": "=PIVOT.VALUE(1,\"price_total_usd\",\"#main_categ_name\",5)" },
         "C13": { "content": "=PIVOT.VALUE(1,\"margin_usd\",\"#main_categ_name\",5)" },
+        "A14": { "content": "=PIVOT.HEADER(1,\"#main_categ_name\",6)" },
+        "B14": { "content": "=PIVOT.VALUE(1,\"price_total_usd\",\"#main_categ_name\",6)" },
+        "C14": { "content": "=PIVOT.VALUE(1,\"margin_usd\",\"#main_categ_name\",6)" },
+        "A15": { "content": "=PIVOT.HEADER(1,\"#main_categ_name\",7)" },
+        "B15": { "content": "=PIVOT.VALUE(1,\"price_total_usd\",\"#main_categ_name\",7)" },
+        "C15": { "content": "=PIVOT.VALUE(1,\"margin_usd\",\"#main_categ_name\",7)" },
+        "A16": { "content": "=PIVOT.HEADER(1,\"#main_categ_name\",8)" },
+        "B16": { "content": "=PIVOT.VALUE(1,\"price_total_usd\",\"#main_categ_name\",8)" },
+        "C16": { "content": "=PIVOT.VALUE(1,\"margin_usd\",\"#main_categ_name\",8)" },
+        "A17": { "content": "=PIVOT.HEADER(1,\"#main_categ_name\",9)" },
+        "B17": { "content": "=PIVOT.VALUE(1,\"price_total_usd\",\"#main_categ_name\",9)" },
+        "C17": { "content": "=PIVOT.VALUE(1,\"margin_usd\",\"#main_categ_name\",9)" },
+        "A18": { "content": "=PIVOT.HEADER(1,\"#main_categ_name\",10)" },
+        "B18": { "content": "=PIVOT.VALUE(1,\"price_total_usd\",\"#main_categ_name\",10)" },
+        "C18": { "content": "=PIVOT.VALUE(1,\"margin_usd\",\"#main_categ_name\",10)" },
 
         "E7": { "content": "TOP PROVEEDORES" },
         "E8": { "content": "Proveedor" },
@@ -188,40 +222,51 @@
         "F12": { "content": "=PIVOT.VALUE(2,\"price_total_usd\",\"#partner_id\",4)" },
         "E13": { "content": "=PIVOT.HEADER(2,\"#partner_id\",5)" },
         "F13": { "content": "=PIVOT.VALUE(2,\"price_total_usd\",\"#partner_id\",5)" },
+        "E14": { "content": "=PIVOT.HEADER(2,\"#partner_id\",6)" },
+        "F14": { "content": "=PIVOT.VALUE(2,\"price_total_usd\",\"#partner_id\",6)" },
+        "E15": { "content": "=PIVOT.HEADER(2,\"#partner_id\",7)" },
+        "F15": { "content": "=PIVOT.VALUE(2,\"price_total_usd\",\"#partner_id\",7)" },
+        "E16": { "content": "=PIVOT.HEADER(2,\"#partner_id\",8)" },
+        "F16": { "content": "=PIVOT.VALUE(2,\"price_total_usd\",\"#partner_id\",8)" },
+        "E17": { "content": "=PIVOT.HEADER(2,\"#partner_id\",9)" },
+        "F17": { "content": "=PIVOT.VALUE(2,\"price_total_usd\",\"#partner_id\",9)" },
+        "E18": { "content": "=PIVOT.HEADER(2,\"#partner_id\",10)" },
+        "F18": { "content": "=PIVOT.VALUE(2,\"price_total_usd\",\"#partner_id\",10)" },
 
-        "A15": { "content": "FINANZAS (CxC / CxP)" },
-        "A16": { "content": "Indicador" },
-        "B16": { "content": "Monto ($)" },
-        "A17": { "content": "Total Cuentas por Cobrar" },
-        "B17": { "content": "=IFERROR(ABS(PIVOT.VALUE(3,\"balance_usd\",\"account_type\",\"asset_receivable\")),0)" },
-        "A18": { "content": "Total Cuentas por Pagar" },
-        "B18": { "content": "=IFERROR(ABS(PIVOT.VALUE(3,\"balance_usd\",\"account_type\",\"liability_payable\")),0)" },
+        "A20": { "content": "FINANZAS (CxC / CxP)" },
+        "A21": { "content": "Indicador" },
+        "B21": { "content": "Monto ($)" },
+        "A22": { "content": "Total Cuentas por Cobrar" },
+        "B22": { "content": "=IFERROR(ABS(PIVOT.VALUE(3,\"balance_usd\",\"account_type\",\"asset_receivable\")),0)" },
+        "A23": { "content": "Total Cuentas por Pagar" },
+        "B23": { "content": "=IFERROR(ABS(PIVOT.VALUE(3,\"balance_usd\",\"account_type\",\"liability_payable\")),0)" },
 
-        "E15": { "content": "INVENTARIO ABC (Inversión)" },
-        "E16": { "content": "Clasificación" },
-        "F16": { "content": "Valor ($)" },
-        "E17": { "content": "Clase A (Alta Inversión)" },
-        "F17": { "content": "=IFERROR(PIVOT.VALUE(4,\"total_value_usd\",\"classification\",\"A\"),0)" },
-        "E18": { "content": "Clase B (Media Inversión)" },
-        "F18": { "content": "=IFERROR(PIVOT.VALUE(4,\"total_value_usd\",\"classification\",\"B\"),0)" },
-        "E19": { "content": "Clase C (Baja Inversión)" },
-        "F19": { "content": "=IFERROR(PIVOT.VALUE(4,\"total_value_usd\",\"classification\",\"C\"),0)" }
+        "E20": { "content": "INVENTARIO ABC (Inversión)" },
+        "E21": { "content": "Clasificación" },
+        "F21": { "content": "Valor ($)" },
+        "E22": { "content": "Clase A (Alta Inversión)" },
+        "F22": { "content": "=IFERROR(PIVOT.VALUE(4,\"total_value_usd\",\"classification\",\"A\"),0)" },
+        "E23": { "content": "Clase B (Media Inversión)" },
+        "F23": { "content": "=IFERROR(PIVOT.VALUE(4,\"total_value_usd\",\"classification\",\"B\"),0)" },
+        "E24": { "content": "Clase C (Baja Inversión)" },
+        "F24": { "content": "=IFERROR(PIVOT.VALUE(4,\"total_value_usd\",\"classification\",\"C\"),0)" }
       },
       "styles": {
         "A1": 1,
-        "A3": 2, "A7": 2, "E7": 2, "A15": 2, "E15": 2,
+        "A3": 2, "A7": 2, "E7": 2, "A20": 2, "E20": 2,
         "A4": 3, "B4": 3, "C4": 3, "D4": 3, "E4": 3,
         "A8": 3, "B8": 3, "C8": 3,
         "E8": 3, "F8": 3,
-        "A16": 3, "B16": 3,
-        "E16": 3, "F16": 3
+        "A21": 3, "B21": 3,
+        "E21": 3, "F21": 3
       },
       "formats": {
         "A5": 1, "B5": 1, "C5": 1, "E5": 1, "D5": 2,
         "B9": 1, "C9": 1, "B10": 1, "C10": 1, "B11": 1, "C11": 1, "B12": 1, "C12": 1, "B13": 1, "C13": 1,
-        "F9": 1, "F10": 1, "F11": 1, "F12": 1, "F13": 1,
-        "B17": 1, "B18": 1,
-        "F17": 1, "F18": 1, "F19": 1
+        "B14": 1, "C14": 1, "B15": 1, "C15": 1, "B16": 1, "C16": 1, "B17": 1, "C17": 1, "B18": 1, "C18": 1,
+        "F9": 1, "F10": 1, "F11": 1, "F12": 1, "F13": 1, "F14": 1, "F15": 1, "F16": 1, "F17": 1, "F18": 1,
+        "B22": 1, "B23": 1,
+        "F22": 1, "F23": 1, "F24": 1
       },
       "borders": {},
       "conditionalFormats": [],

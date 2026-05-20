@@ -24,30 +24,67 @@ class ReporteGerenciaVentas(models.Model):
     order_ref = fields.Char('Referencia de Pedido', readonly=True)
     order_count = fields.Float('Contador de Pedidos', readonly=True)
 
+    @api.model
+    def _refresh_materialized_view(self):
+        self.env.cr.execute(
+            "REFRESH MATERIALIZED VIEW CONCURRENTLY %s" % self._table
+        )
+
     def init(self):
-        # Force refresh of the SQL view with correct table aliases
-        tools.drop_view_if_exists(self.env.cr, self._table)
-        self.env.cr.execute("""
-            CREATE OR REPLACE VIEW %s AS (
-                WITH consolidated_sales AS (
+        cr = self.env.cr
+        cr.execute("DROP MATERIALIZED VIEW IF EXISTS %s CASCADE" % self._table)
+        tools.drop_view_if_exists(cr, self._table)
+        company_id = self.env.company.id
+        cr.execute("""
+            CREATE MATERIALIZED VIEW {table} AS (
+                WITH
+                -- Determinar la categoría principal considerando si la raíz es genérica
+                category_root AS (
+                    SELECT
+                        pc.id,
+                        CASE
+                            WHEN root_lvl1.name IN ('ALL', 'All', 'Todos', 'all')
+                                 AND NULLIF(SPLIT_PART(pc.parent_path, '/', 2), '') IS NOT NULL
+                            THEN CAST(SPLIT_PART(pc.parent_path, '/', 2) AS INTEGER)
+                            ELSE CAST(SPLIT_PART(pc.parent_path, '/', 1) AS INTEGER)
+                        END AS root_id
+                    FROM product_category pc
+                    LEFT JOIN product_category root_lvl1 ON root_lvl1.id = CAST(SPLIT_PART(pc.parent_path, '/', 1) AS INTEGER)
+                ),
+                category_root_names AS (
+                    SELECT cr.id, cr.root_id, cn.name AS root_name
+                    FROM category_root cr
+                    JOIN product_category cn ON cn.id = cr.root_id
+                ),
+                -- Tasa USD de fallback (la más reciente registrada)
+                usd_rate_fallback AS (
+                    SELECT 1.0 / NULLIF(rate, 0) AS tasa
+                    FROM res_currency_rate
+                    WHERE currency_id = (SELECT id FROM res_currency WHERE name = 'USD' LIMIT 1)
+                    ORDER BY name DESC
+                    LIMIT 1
+                ),
+                consolidated_sales AS (
                     -- VENTAS DE POS
                     SELECT
                         pol.create_date AS date,
                         pol.product_id AS product_id,
                         pt.categ_id AS categ_id,
                         pol.qty AS quantity,
-                        pol.price_subtotal_incl AS price_total,
-                        pol.price_subtotal_incl_ref AS price_total_usd,
+                        pol.price_subtotal AS price_total,
+                        pol.price_subtotal_ref AS price_total_usd,
                         COALESCE(pol.total_cost, 0) AS cost_total,
-                        (COALESCE(pol.total_cost, 0) / NULLIF(po.currency_rate_ref, 0)) AS cost_total_usd,
+                        (COALESCE(pol.total_cost, 0) / NULLIF(
+                            COALESCE(NULLIF(po.currency_rate_ref, 0), (SELECT tasa FROM usd_rate_fallback)),
+                            0)) AS cost_total_usd,
                         'pos' AS source,
                         po.id AS order_id,
-                        'POS/' || po.id::text AS order_ref
+                        'POS/' || po.id::text AS order_ref,
+                        'pos-' || pol.id::text AS stable_key
                     FROM pos_order_line pol
                     JOIN pos_order po ON po.id = pol.order_id
                     JOIN product_product pp ON pp.id = pol.product_id
                     JOIN product_template pt ON pt.id = pp.product_tmpl_id
-                    JOIN product_category pc ON pc.id = pt.categ_id
                     WHERE po.state IN ('paid', 'done', 'invoiced')
 
                     UNION ALL
@@ -58,19 +95,25 @@ class ReporteGerenciaVentas(models.Model):
                         sol.product_id AS product_id,
                         pt.categ_id AS categ_id,
                         sol.product_uom_qty AS quantity,
-                        sol.price_total AS price_total,
-                        (sol.price_total / NULLIF(so.x_tasa, 0)) AS price_total_usd,
+                        sol.price_subtotal AS price_total,
+                        (sol.price_subtotal / NULLIF(
+                            COALESCE(NULLIF(so.x_tasa, 0), (SELECT tasa FROM usd_rate_fallback)),
+                            0)) AS price_total_usd,
                         (sol.product_uom_qty * COALESCE(sol.purchase_price, 0)) AS cost_total,
-                        ((sol.product_uom_qty * COALESCE(sol.purchase_price, 0)) / NULLIF(so.x_tasa, 0)) AS cost_total_usd,
+                        ((sol.product_uom_qty * COALESCE(sol.purchase_price, 0)) / NULLIF(
+                            COALESCE(NULLIF(so.x_tasa, 0), (SELECT tasa FROM usd_rate_fallback)),
+                            0)) AS cost_total_usd,
                         'sale' AS source,
                         so.id AS order_id,
-                        'SO/' || so.id::text AS order_ref
+                        'SO/' || so.id::text AS order_ref,
+                        'so-' || sol.id::text AS stable_key
                     FROM sale_order_line sol
                     JOIN sale_order so ON so.id = sol.order_id
                     JOIN product_product pp ON pp.id = sol.product_id
                     JOIN product_template pt ON pt.id = pp.product_tmpl_id
-                    JOIN product_category pc ON pc.id = pt.categ_id
-                    WHERE so.state IN ('sale', 'done') AND sol.product_uom_qty > 0
+                    WHERE so.state IN ('sale', 'done')
+                      AND sol.product_uom_qty > 0
+                      AND (sol.display_type IS NULL OR sol.display_type NOT IN ('line_section', 'line_note'))
 
                     UNION ALL
 
@@ -80,62 +123,44 @@ class ReporteGerenciaVentas(models.Model):
                         aml.product_id AS product_id,
                         pt.categ_id AS categ_id,
                         aml.quantity AS quantity,
-                        aml.price_total AS price_total,
-                        (aml.price_total / NULLIF(am.tasa, 0)) AS price_total_usd,
-                        COALESCE((
-                            SELECT SUM(svl.remaining_value) 
-                            FROM stock_valuation_layer svl 
-                            WHERE svl.product_id = aml.product_id 
-                            AND svl.stock_move_id IN (
-                                SELECT stock_move_id FROM stock_move_line WHERE picking_id IN (
-                                    SELECT picking_id FROM stock_picking WHERE sale_id IS NULL
-                                )
-                            ) LIMIT 1
-                        ), 0) AS cost_total,
-                        (COALESCE((
-                            SELECT SUM(svl.remaining_value) 
-                            FROM stock_valuation_layer svl 
-                            WHERE svl.product_id = aml.product_id 
-                            AND svl.stock_move_id IN (
-                                SELECT stock_move_id FROM stock_move_line WHERE picking_id IN (
-                                    SELECT picking_id FROM stock_picking WHERE sale_id IS NULL
-                                )
-                            ) LIMIT 1
-                        ), 0) / NULLIF(am.tasa, 0)) AS cost_total_usd,
+                        aml.price_subtotal AS price_total,
+                        (aml.price_subtotal / NULLIF(
+                            COALESCE(NULLIF(am.tasa, 0), (SELECT tasa FROM usd_rate_fallback)),
+                            0)) AS price_total_usd,
+                        (aml.quantity * COALESCE((pp.standard_price->>'{company_id}')::numeric, 0)) AS cost_total,
+                        (aml.quantity * COALESCE(pt.standard_price_usd, 0)) AS cost_total_usd,
                         'invoice' AS source,
                         am.id AS order_id,
-                        'INV/' || am.id::text AS order_ref
+                        'INV/' || am.id::text AS order_ref,
+                        'inv-' || aml.id::text AS stable_key
                     FROM account_move_line aml
                     JOIN account_move am ON am.id = aml.move_id
                     JOIN product_product pp ON pp.id = aml.product_id
                     JOIN product_template pt ON pt.id = pp.product_tmpl_id
-                    JOIN product_category pc ON pc.id = pt.categ_id
                     WHERE am.move_type IN ('out_invoice', 'out_refund')
-                    AND am.state = 'posted'
-                    AND aml.display_type = 'product'
-                    AND am.id NOT IN (SELECT DISTINCT account_move FROM pos_order WHERE account_move IS NOT NULL)
-                    AND NOT EXISTS (SELECT 1 FROM sale_order_line_invoice_rel rel WHERE rel.invoice_line_id = aml.id)
+                      AND am.state = 'posted'
+                      AND aml.display_type = 'product'
+                      AND NOT EXISTS (SELECT 1 FROM pos_order po2 WHERE po2.account_move = am.id)
+                      AND NOT EXISTS (SELECT 1 FROM sale_order_line_invoice_rel rel WHERE rel.invoice_line_id = aml.id)
                 ),
                 category_hierarchy AS (
-                    SELECT 
-                        s.*,
-                        CAST(NULLIF(SPLIT_PART(pc.parent_path, '/', 1), '') AS INTEGER) AS main_categ_id
+                    SELECT s.*, cr.root_id AS main_categ_id, cr.root_name AS main_categ_name
                     FROM consolidated_sales s
-                    JOIN product_category pc ON pc.id = s.categ_id
+                    LEFT JOIN category_root_names cr ON cr.id = s.categ_id
                 ),
                 numbered_sales AS (
-                    SELECT 
+                    SELECT
                         s.*,
-                        row_number() OVER (PARTITION BY s.order_ref ORDER BY s.date) as row_idx
+                        row_number() OVER (PARTITION BY s.order_ref ORDER BY s.date) AS row_idx
                     FROM category_hierarchy s
                 )
                 SELECT
-                    row_number() OVER () AS id,
+                    row_number() OVER (ORDER BY s.date DESC, s.stable_key) AS id,
                     s.date,
                     s.product_id,
                     s.categ_id,
                     s.main_categ_id,
-                    COALESCE(rc.name, 'Sin Categoría') AS main_categ_name,
+                    COALESCE(s.main_categ_name, 'Sin Categoría') AS main_categ_name,
                     s.quantity,
                     s.price_total,
                     s.price_total_usd,
@@ -148,6 +173,11 @@ class ReporteGerenciaVentas(models.Model):
                     s.order_ref,
                     CASE WHEN s.row_idx = 1 THEN 1.0 ELSE 0.0 END AS order_count
                 FROM numbered_sales s
-                LEFT JOIN product_category rc ON rc.id = s.main_categ_id
-            )
-        """ % self._table)
+            ) WITH DATA
+        """.format(table=self._table, company_id=company_id))
+        cr.execute(
+            "CREATE UNIQUE INDEX {table}_id_uniq ON {table}(id)".format(table=self._table)
+        )
+        cr.execute(
+            "CREATE INDEX {table}_date_idx ON {table}(date)".format(table=self._table)
+        )

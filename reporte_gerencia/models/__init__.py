@@ -3,3 +3,4 @@ from . import reporte_ventas_sql
 from . import reporte_compras_sql
 from . import reporte_financiero_sql
 from . import inventario_abc
+from . import source_indexes

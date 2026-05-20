@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="cron_refresh_reporte_gerencia" model="ir.cron">
+            <field name="name">Reporte Gerencia: Refrescar vistas materializadas</field>
+            <field name="model_id" ref="model_reporte_gerencia_ventas"/>
+            <field name="state">code</field>
+            <field name="code">
+env['reporte.gerencia.ventas']._refresh_materialized_view()
+env['reporte.gerencia.compras']._refresh_materialized_view()
+env['reporte.gerencia.financiero']._refresh_materialized_view()
+env['reporte.gerencia.inventario.abc']._refresh_materialized_view()
+            </field>
+            <field name="interval_number">30</field>
+            <field name="interval_type">minutes</field>
+            <field name="numbercall">-1</field>
+            <field name="active">True</field>
+        </record>
+    </data>
+</odoo>

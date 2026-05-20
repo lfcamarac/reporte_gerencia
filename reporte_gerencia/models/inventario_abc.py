@@ -22,13 +22,40 @@ class ReporteGerenciaInventarioABC(models.Model):
         ('C', 'Baja Inversión (C)')
     ], string='Clasificación', readonly=True)
 
+    @api.model
+    def _refresh_materialized_view(self):
+        self.env.cr.execute(
+            "REFRESH MATERIALIZED VIEW CONCURRENTLY %s" % self._table
+        )
+
     def init(self):
-        self.env.cr.execute("DROP VIEW IF EXISTS %s CASCADE" % self._table)
-        self.env.cr.execute("""
-            CREATE OR REPLACE VIEW %s AS (
-                WITH product_stock AS (
-                    -- Obtener stock consolidado por producto en ubicaciones internas
-                    SELECT 
+        cr = self.env.cr
+        cr.execute("DROP MATERIALIZED VIEW IF EXISTS %s CASCADE" % self._table)
+        cr.execute("DROP VIEW IF EXISTS %s CASCADE" % self._table)
+        company_id = self.env.company.id
+        cr.execute("""
+            CREATE MATERIALIZED VIEW {table} AS (
+                WITH
+                -- Determinar la categoría principal considerando si la raíz es genérica
+                category_root AS (
+                    SELECT
+                        pc.id,
+                        CASE
+                            WHEN root_lvl1.name IN ('ALL', 'All', 'Todos', 'all')
+                                 AND NULLIF(SPLIT_PART(pc.parent_path, '/', 2), '') IS NOT NULL
+                            THEN CAST(SPLIT_PART(pc.parent_path, '/', 2) AS INTEGER)
+                            ELSE CAST(SPLIT_PART(pc.parent_path, '/', 1) AS INTEGER)
+                        END AS root_id
+                    FROM product_category pc
+                    LEFT JOIN product_category root_lvl1 ON root_lvl1.id = CAST(SPLIT_PART(pc.parent_path, '/', 1) AS INTEGER)
+                ),
+                category_root_names AS (
+                    SELECT cr.id, cr.root_id, cn.name AS root_name
+                    FROM category_root cr
+                    JOIN product_category cn ON cn.id = cr.root_id
+                ),
+                product_stock AS (
+                    SELECT
                         sq.product_id,
                         SUM(sq.quantity) AS quantity
                     FROM stock_quant sq
@@ -37,41 +64,34 @@ class ReporteGerenciaInventarioABC(models.Model):
                     GROUP BY sq.product_id
                 ),
                 product_values AS (
-                    -- Calcular valores base por producto
-                    SELECT 
+                    SELECT
                         pp.id AS product_id,
                         pt.categ_id AS categ_id,
-                        CAST(NULLIF(SPLIT_PART(pc.parent_path, '/', 1), '') AS INTEGER) AS main_categ_id,
                         COALESCE(ps.quantity, 0) AS stock,
-                        -- Costo en BS (JSONB en Odoo 18)
-                        (COALESCE(pp.standard_price->>'1', '0'))::numeric AS cost,
-                        -- Costo en USD (campo custom de base_contable en template)
+                        COALESCE((pp.standard_price->>'{company_id}')::numeric, 0) AS cost,
                         COALESCE(pt.standard_price_usd, 0) AS cost_usd,
-                        -- Valores Totales
-                        COALESCE(ps.quantity, 0) * (COALESCE(pp.standard_price->>'1', '0'))::numeric AS total_value,
+                        COALESCE(ps.quantity, 0) * COALESCE((pp.standard_price->>'{company_id}')::numeric, 0) AS total_value,
                         COALESCE(ps.quantity, 0) * COALESCE(pt.standard_price_usd, 0) AS total_value_usd
                     FROM product_product pp
                     JOIN product_template pt ON pt.id = pp.product_tmpl_id
-                    JOIN product_category pc ON pc.id = pt.categ_id
                     LEFT JOIN product_stock ps ON ps.product_id = pp.id
                     WHERE (pt.is_storable = True OR pt.type = 'product')
-                    AND pt.active = True
+                      AND pt.active = True
                 ),
                 total_inv AS (
                     SELECT SUM(total_value_usd) AS grand_total FROM product_values
                 ),
                 calculated_abc AS (
-                    -- Calcular porcentajes y acumulados para el ranking ABC
-                    SELECT 
+                    SELECT
                         pv.*,
-                        COALESCE(rc.name, 'Sin Categoría') AS main_categ_name,
+                        COALESCE(cr.root_name, 'Sin Categoría') AS main_categ_name,
                         ti.grand_total,
                         SUM(pv.total_value_usd) OVER (ORDER BY pv.total_value_usd DESC, pv.product_id ASC) AS cumulative_value
                     FROM product_values pv
                     CROSS JOIN total_inv ti
-                    LEFT JOIN product_category rc ON rc.id = pv.main_categ_id
+                    LEFT JOIN category_root_names cr ON cr.id = pv.categ_id
                 )
-                SELECT 
+                SELECT
                     row_number() OVER (ORDER BY total_value_usd DESC, product_id ASC) AS id,
                     product_id,
                     categ_id,
@@ -81,15 +101,21 @@ class ReporteGerenciaInventarioABC(models.Model):
                     total_value,
                     cost_usd,
                     total_value_usd,
-                    CASE 
-                        WHEN COALESCE(grand_total, 0) > 0 THEN (cumulative_value / grand_total) * 100 
-                        ELSE 0 
+                    CASE
+                        WHEN COALESCE(grand_total, 0) > 0 THEN (cumulative_value / grand_total) * 100
+                        ELSE 0
                     END AS cumulative_percentage,
-                    CASE 
+                    CASE
                         WHEN COALESCE(grand_total, 0) > 0 AND (cumulative_value / grand_total) * 100 <= 80 THEN 'A'
                         WHEN COALESCE(grand_total, 0) > 0 AND (cumulative_value / grand_total) * 100 <= 95 THEN 'B'
                         ELSE 'C'
                     END AS classification
                 FROM calculated_abc
-            )
-        """ % self._table)
+            ) WITH DATA
+        """.format(table=self._table, company_id=company_id))
+        cr.execute(
+            "CREATE UNIQUE INDEX {table}_id_uniq ON {table}(id)".format(table=self._table)
+        )
+        cr.execute(
+            "CREATE INDEX {table}_classification_idx ON {table}(classification)".format(table=self._table)
+        )
