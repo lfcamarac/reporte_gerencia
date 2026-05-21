@@ -84,7 +84,7 @@ class ReporteGerenciaVentas(models.Model):
                         ) AS cost_total_usd,
                         'pos' AS source,
                         po.id AS order_id,
-                        'POS/' || po.id::text AS order_ref,
+                        po.pos_reference AS order_ref,
                         'pos-' || pol.id::text AS stable_key
                     FROM pos_order_line pol
                     JOIN pos_order po ON po.id = pol.order_id
@@ -110,7 +110,7 @@ class ReporteGerenciaVentas(models.Model):
                             0)) AS cost_total_usd,
                         'sale' AS source,
                         so.id AS order_id,
-                        'SO/' || so.id::text AS order_ref,
+                        so.name AS order_ref,
                         'so-' || sol.id::text AS stable_key
                     FROM sale_order_line sol
                     JOIN sale_order so ON so.id = sol.order_id
@@ -136,7 +136,7 @@ class ReporteGerenciaVentas(models.Model):
                         (aml.quantity * COALESCE(pt.standard_price_usd, 0)) AS cost_total_usd,
                         'invoice' AS source,
                         am.id AS order_id,
-                        'INV/' || am.id::text AS order_ref,
+                        am.name AS order_ref,
                         'inv-' || aml.id::text AS stable_key
                     FROM account_move_line aml
                     JOIN account_move am ON am.id = aml.move_id
