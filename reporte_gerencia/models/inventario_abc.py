@@ -50,7 +50,10 @@ class ReporteGerenciaInventarioABC(models.Model):
                     LEFT JOIN product_category root_lvl1 ON root_lvl1.id = CAST(SPLIT_PART(pc.parent_path, '/', 1) AS INTEGER)
                 ),
                 category_root_names AS (
-                    SELECT cr.id, cr.root_id, cn.name AS root_name
+                    SELECT 
+                        cr.id, 
+                        cr.root_id, 
+                        TRIM(SPLIT_PART(cn.name, '/', 1)) AS root_name
                     FROM category_root cr
                     JOIN product_category cn ON cn.id = cr.root_id
                 ),
