@@ -58,7 +58,9 @@ class ReporteGerenciaVentas(models.Model):
                 ),
                 -- Tasa USD de fallback (la más reciente registrada)
                 usd_rate_fallback AS (
-                    SELECT 1.0 / NULLIF(rate, 0) AS tasa
+                    SELECT 
+                        1.0 / NULLIF(rate, 0) AS tasa_directa, -- Bs por 1 USD
+                        rate AS tasa_inversa                   -- USD por 1 Bs
                     FROM res_currency_rate
                     WHERE currency_id = (SELECT id FROM res_currency WHERE name = 'USD' LIMIT 1)
                     ORDER BY name DESC
@@ -74,9 +76,9 @@ class ReporteGerenciaVentas(models.Model):
                         pol.price_subtotal AS price_total,
                         pol.price_subtotal_ref AS price_total_usd,
                         COALESCE(pol.total_cost, 0) AS cost_total,
-                        (COALESCE(pol.total_cost, 0) / NULLIF(
-                            COALESCE(NULLIF(po.currency_rate_ref, 0), (SELECT tasa FROM usd_rate_fallback)),
-                            0)) AS cost_total_usd,
+                        (COALESCE(pol.total_cost, 0) * 
+                            COALESCE(NULLIF(po.currency_rate_ref, 0), (SELECT tasa_inversa FROM usd_rate_fallback))
+                        ) AS cost_total_usd,
                         'pos' AS source,
                         po.id AS order_id,
                         'POS/' || po.id::text AS order_ref,
@@ -97,11 +99,11 @@ class ReporteGerenciaVentas(models.Model):
                         sol.product_uom_qty AS quantity,
                         sol.price_subtotal AS price_total,
                         (sol.price_subtotal / NULLIF(
-                            COALESCE(NULLIF(so.x_tasa, 0), (SELECT tasa FROM usd_rate_fallback)),
+                            COALESCE(NULLIF(so.x_tasa, 0), (SELECT tasa_directa FROM usd_rate_fallback)),
                             0)) AS price_total_usd,
                         (sol.product_uom_qty * COALESCE(sol.purchase_price, 0)) AS cost_total,
                         ((sol.product_uom_qty * COALESCE(sol.purchase_price, 0)) / NULLIF(
-                            COALESCE(NULLIF(so.x_tasa, 0), (SELECT tasa FROM usd_rate_fallback)),
+                            COALESCE(NULLIF(so.x_tasa, 0), (SELECT tasa_directa FROM usd_rate_fallback)),
                             0)) AS cost_total_usd,
                         'sale' AS source,
                         so.id AS order_id,
@@ -125,7 +127,7 @@ class ReporteGerenciaVentas(models.Model):
                         aml.quantity AS quantity,
                         aml.price_subtotal AS price_total,
                         (aml.price_subtotal / NULLIF(
-                            COALESCE(NULLIF(am.tasa, 0), (SELECT tasa FROM usd_rate_fallback)),
+                            COALESCE(NULLIF(am.tasa, 0), (SELECT tasa_directa FROM usd_rate_fallback)),
                             0)) AS price_total_usd,
                         (aml.quantity * COALESCE((pp.standard_price->>'{company_id}')::numeric, 0)) AS cost_total,
                         (aml.quantity * COALESCE(pt.standard_price_usd, 0)) AS cost_total_usd,
