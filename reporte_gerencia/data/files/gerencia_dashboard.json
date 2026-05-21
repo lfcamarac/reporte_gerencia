@@ -175,7 +175,7 @@
         "E5": { "content": "=IFERROR(IF(PIVOT.VALUE(1,\"order_count\")>0,A5/PIVOT.VALUE(1,\"order_count\"),0),0)" },
 
         "G4": { "content": "Var. vs Mes Ant." },
-        "G5": { "content": "=IFERROR((A5/NULLIF(PIVOT.VALUE(1,\"price_total_usd\",\"date\",-1),0))-1,0)" },
+        "G5": { "content": "=IFERROR((A5/PIVOT.VALUE(1,\"price_total_usd\",\"date\",-1))-1,0)" },
 
         "A7": { "content": "VENTAS POR CATEGORÍA" },
         "A8": { "content": "Categoría" },
