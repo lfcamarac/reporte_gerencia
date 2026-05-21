@@ -33,6 +33,7 @@
             <list string="Auditoría de Ventas" decoration-success="margin_usd > 0" decoration-danger="margin_usd &lt; 0">
                 <field name="date"/>
                 <field name="order_ref"/>
+                <field name="partner_id" optional="show"/>
                 <field name="source" widget="badge" decoration-info="source == 'pos'" decoration-success="source == 'sale'" decoration-warning="source == 'invoice'"/>
                 <field name="main_categ_name"/>
                 <field name="product_id"/>
@@ -65,11 +66,16 @@
                 <filter string="Este Mes" name="this_month" domain="[('date', '&gt;=', context_today().strftime('%Y-%m-01'))]"/>
                 <filter string="Mes Pasado" name="last_month" domain="[('date', '&gt;=', (context_today() - relativedelta(months=1)).strftime('%Y-%m-01')), ('date', '&lt;', context_today().strftime('%Y-%m-01'))]"/>
                 <separator/>
+                <filter string="Este Trimestre" name="this_quarter" domain="[('date', '&gt;=', (context_today() - relativedelta(months=(context_today().month-1)%3)).strftime('%Y-%m-01'))]"/>
+                <filter string="Trimestre Pasado" name="last_quarter" domain="[('date', '&gt;=', (context_today() - relativedelta(months=(context_today().month-1)%3 + 3)).strftime('%Y-%m-01')), ('date', '&lt;', (context_today() - relativedelta(months=(context_today().month-1)%3)).strftime('%Y-%m-01'))]"/>
+                <filter string="Este Año" name="this_year" domain="[('date', '&gt;=', context_today().strftime('%Y-01-01'))]"/>
+                <separator/>
                 <filter string="Fecha" name="filter_date" date="date"/>
                 <separator/>
                 <group expand="1" string="Agrupar Por">
                     <filter string="Categoría Principal" name="group_main_categ" context="{'group_by': 'main_categ_name'}"/>
                     <filter string="Origen / Canal" name="group_source" context="{'group_by': 'source'}"/>
+                    <filter string="Cliente" name="group_partner" context="{'group_by': 'partner_id'}"/>
                     <filter string="Producto" name="group_product" context="{'group_by': 'product_id'}"/>
                     <filter string="Día" name="group_date_day" context="{'group_by': 'date:day'}"/>
                     <filter string="Semana" name="group_date_week" context="{'group_by': 'date:week'}"/>
@@ -140,6 +146,10 @@
                 <filter string="Este Mes" name="this_month" domain="[('date', '&gt;=', context_today().strftime('%Y-%m-01'))]"/>
                 <filter string="Mes Pasado" name="last_month" domain="[('date', '&gt;=', (context_today() - relativedelta(months=1)).strftime('%Y-%m-01')), ('date', '&lt;', context_today().strftime('%Y-%m-01'))]"/>
                 <separator/>
+                <filter string="Este Trimestre" name="this_quarter" domain="[('date', '&gt;=', (context_today() - relativedelta(months=(context_today().month-1)%3)).strftime('%Y-%m-01'))]"/>
+                <filter string="Trimestre Pasado" name="last_quarter" domain="[('date', '&gt;=', (context_today() - relativedelta(months=(context_today().month-1)%3 + 3)).strftime('%Y-%m-01')), ('date', '&lt;', (context_today() - relativedelta(months=(context_today().month-1)%3)).strftime('%Y-%m-01'))]"/>
+                <filter string="Este Año" name="this_year" domain="[('date', '&gt;=', context_today().strftime('%Y-01-01'))]"/>
+                <separator/>
                 <filter string="Fecha" name="filter_date" date="date"/>
                 <separator/>
                 <group expand="1" string="Agrupar Por">
@@ -200,6 +210,9 @@
                 <filter string="Cuentas por Pagar" name="payable" domain="[('account_type', '=', 'liability_payable')]"/>
                 <separator/>
                 <filter string="Solo con Saldo Pendiente" name="with_value" domain="[('balance_usd', '!=', 0)]"/>
+                <separator/>
+                <filter string="Este Trimestre" name="this_quarter" domain="[('date', '&gt;=', (context_today() - relativedelta(months=(context_today().month-1)%3)).strftime('%Y-%m-01'))]"/>
+                <filter string="Trimestre Pasado" name="last_quarter" domain="[('date', '&gt;=', (context_today() - relativedelta(months=(context_today().month-1)%3 + 3)).strftime('%Y-%m-01')), ('date', '&lt;', (context_today() - relativedelta(months=(context_today().month-1)%3)).strftime('%Y-%m-01'))]"/>
                 <separator/>
                 <filter string="Fecha" name="filter_date" date="date"/>
                 <separator/>

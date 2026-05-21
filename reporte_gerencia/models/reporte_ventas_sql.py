@@ -9,6 +9,7 @@ class ReporteGerenciaVentas(models.Model):
 
     date = fields.Datetime('Fecha', readonly=True)
     product_id = fields.Many2one('product.product', 'Producto', readonly=True)
+    partner_id = fields.Many2one('res.partner', 'Cliente', readonly=True)
     categ_id = fields.Many2one('product.category', 'Categoría', readonly=True)
     main_categ_id = fields.Many2one('product.category', 'ID Categoría Principal', readonly=True)
     main_categ_name = fields.Char('Categoría Principal', readonly=True)
@@ -74,6 +75,7 @@ class ReporteGerenciaVentas(models.Model):
                     SELECT
                         pol.create_date AS date,
                         pol.product_id AS product_id,
+                        po.partner_id AS partner_id,
                         pt.categ_id AS categ_id,
                         pol.qty AS quantity,
                         pol.price_subtotal AS price_total,
@@ -98,6 +100,7 @@ class ReporteGerenciaVentas(models.Model):
                     SELECT
                         sol.create_date AS date,
                         sol.product_id AS product_id,
+                        so.partner_id AS partner_id,
                         pt.categ_id AS categ_id,
                         sol.product_uom_qty AS quantity,
                         sol.price_subtotal AS price_total,
@@ -126,6 +129,7 @@ class ReporteGerenciaVentas(models.Model):
                     SELECT
                         am.invoice_date::timestamp AS date,
                         aml.product_id AS product_id,
+                        am.partner_id AS partner_id,
                         pt.categ_id AS categ_id,
                         aml.quantity AS quantity,
                         aml.price_subtotal AS price_total,
@@ -163,6 +167,7 @@ class ReporteGerenciaVentas(models.Model):
                     row_number() OVER (ORDER BY s.date DESC, s.stable_key) AS id,
                     s.date,
                     s.product_id,
+                    s.partner_id,
                     s.categ_id,
                     s.main_categ_id,
                     COALESCE(s.main_categ_name, 'Sin Categoría') AS main_categ_name,
@@ -185,4 +190,7 @@ class ReporteGerenciaVentas(models.Model):
         )
         cr.execute(
             "CREATE INDEX {table}_date_idx ON {table}(date)".format(table=self._table)
+        )
+        cr.execute(
+            "CREATE INDEX {table}_partner_idx ON {table}(partner_id)".format(table=self._table)
         )

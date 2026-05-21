@@ -21,22 +21,29 @@
     {
       "id": "f_periodo",
       "type": "date",
-      "label": "Periodo",
+      "label": "Rango de Fecha",
       "defaultValue": "this_month",
       "rangeType": "relative"
     },
     {
       "id": "f_categoria",
       "type": "relation",
-      "label": "Categoría",
+      "label": "Categoría Principal",
       "modelName": "product.category",
       "defaultValue": [],
       "includeChildren": true
     },
     {
+      "id": "f_contacto",
+      "type": "relation",
+      "label": "Cliente/Proveedor",
+      "modelName": "res.partner",
+      "defaultValue": []
+    },
+    {
       "id": "f_canal",
       "type": "text",
-      "label": "Canal (pos/sale/invoice)",
+      "label": "Canal",
       "defaultValue": ""
     }
   ],
@@ -75,6 +82,7 @@
       "fieldMatching": {
         "f_periodo": { "chain": "date", "type": "datetime", "offset": 0 },
         "f_categoria": { "chain": "main_categ_id", "type": "many2one" },
+        "f_contacto": { "chain": "partner_id", "type": "many2one" },
         "f_canal": { "chain": "source", "type": "selection" }
       }
     },
@@ -98,7 +106,8 @@
       },
       "fieldMatching": {
         "f_periodo": { "chain": "date", "type": "date", "offset": 0 },
-        "f_categoria": { "chain": "main_categ_id", "type": "many2one" }
+        "f_categoria": { "chain": "main_categ_id", "type": "many2one" },
+        "f_contacto": { "chain": "partner_id", "type": "many2one" }
       }
     },
     "3": {
@@ -116,7 +125,8 @@
       "rows": [{ "fieldName": "account_type", "order": "asc" }],
       "sortedColumn": null,
       "fieldMatching": {
-        "f_periodo": { "chain": "date", "type": "date", "offset": 0 }
+        "f_periodo": { "chain": "date", "type": "date", "offset": 0 },
+        "f_contacto": { "chain": "partner_id", "type": "many2one" }
       }
     },
     "4": {
